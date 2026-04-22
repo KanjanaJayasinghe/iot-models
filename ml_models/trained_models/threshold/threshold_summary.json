@@ -1,0 +1,338 @@
+{
+  "turbidity": {
+    "sensor": "turbidity",
+    "n_samples": 1618,
+    "gmm_thresholds": {
+      "method": "GMM",
+      "thresholds": {
+        "warning_low": 4.923882798516738,
+        "warning_high": 6.532923958658955,
+        "component_means": [
+          3.7512638925999555,
+          6.096501704433521,
+          6.969346212884389
+        ],
+        "component_stds": [
+          0.06691087455757075,
+          1.0771961165589985,
+          1.6969783227292503
+        ],
+        "bic": 4910.644110083639,
+        "aic": 4867.532541302691
+      },
+      "zone_counts": {
+        "normal": 873,
+        "warning": 523,
+        "danger": 222
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\turbidity_gmm.joblib"
+    },
+    "label_distribution": {
+      "normal": 810,
+      "warning": 625,
+      "danger": 183
+    },
+    "classifiers": {
+      "Decision_Tree": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 0.9995271341777366,
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\turbidity_decision_tree.joblib"
+      },
+      "Random_Forest": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 0.9995271341777366,
+        "feature_importances": {
+          "value": 0.3066359363567582,
+          "diff_1": 0.0033380929649272557,
+          "rolling_mean_5": 0.11659066464870961,
+          "rolling_std_5": 0.009445039030421263,
+          "rolling_mean_10": 0.08627680550991977,
+          "deviation": 0.32583616558512785,
+          "ema_5": 0.1518772959041361
+        },
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\turbidity_random_forest_threshold.joblib"
+      }
+    },
+    "best_classifier": "Decision_Tree"
+  },
+  "ph": {
+    "sensor": "ph",
+    "n_samples": 1619,
+    "gmm_thresholds": {
+      "method": "GMM",
+      "thresholds": {
+        "warning_low": 7.093038573749606,
+        "warning_high": 8.944887259198296,
+        "component_means": [
+          6.132180906087817,
+          8.053896241411394,
+          9.835878276985197
+        ],
+        "component_stds": [
+          0.2552665819639863,
+          0.2743748458104114,
+          0.49023145408535274
+        ],
+        "bic": 3149.716651550027,
+        "aic": 3106.600139920606
+      },
+      "zone_counts": {
+        "normal": 501,
+        "warning": 1085,
+        "danger": 33
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\ph_gmm.joblib"
+    },
+    "label_distribution": {
+      "normal": 791,
+      "warning": 745,
+      "danger": 83
+    },
+    "classifiers": {
+      "Decision_Tree": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 1.0,
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\ph_decision_tree.joblib"
+      },
+      "Random_Forest": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 1.0,
+        "feature_importances": {
+          "value": 0.3474776079938257,
+          "diff_1": 0.0074680087506843115,
+          "rolling_mean_5": 0.10102576426096505,
+          "rolling_std_5": 0.009569906916661746,
+          "rolling_mean_10": 0.07046826243998967,
+          "deviation": 0.31253935746373146,
+          "ema_5": 0.15145109217414204
+        },
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\ph_random_forest_threshold.joblib"
+      }
+    },
+    "best_classifier": "Decision_Tree"
+  },
+  "temperature": {
+    "sensor": "temperature",
+    "n_samples": 1618,
+    "gmm_thresholds": {
+      "method": "GMM",
+      "thresholds": {
+        "warning_low": 90.30914405255501,
+        "warning_high": 162.31725147010997,
+        "component_means": [
+          90.03578516488994,
+          90.58250294022008,
+          234.05199999999988
+        ],
+        "component_stds": [
+          0.001,
+          0.6932307962400435,
+          3.462312879107284
+        ],
+        "bic": 5134.267972830159,
+        "aic": 5091.156404049211
+      },
+      "zone_counts": {
+        "normal": 1437,
+        "warning": 177,
+        "danger": 4
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\temperature_gmm.joblib"
+    },
+    "label_distribution": {
+      "normal": 988,
+      "warning": 626,
+      "danger": 4
+    },
+    "classifiers": {
+      "Decision_Tree": {
+        "accuracy": 0.9993819530284301,
+        "cv_f1_mean": 0.9161324786324786,
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\temperature_decision_tree.joblib"
+      },
+      "Random_Forest": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 1.0,
+        "feature_importances": {
+          "value": 0.2997460755890242,
+          "diff_1": 0.058939391567689466,
+          "rolling_mean_5": 0.09811296817145429,
+          "rolling_std_5": 0.06108523213687323,
+          "rolling_mean_10": 0.07437971536054505,
+          "deviation": 0.26821417038246925,
+          "ema_5": 0.13952244679194442
+        },
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\temperature_random_forest_threshold.joblib"
+      }
+    },
+    "best_classifier": "Random_Forest"
+  },
+  "tds": {
+    "sensor": "tds",
+    "n_samples": 1619,
+    "gmm_thresholds": {
+      "method": "GMM",
+      "thresholds": {
+        "warning_low": 44.64782213558647,
+        "warning_high": 108.29183855818366,
+        "component_means": [
+          4.2103979862923016,
+          85.08524628488065,
+          131.49843083148664
+        ],
+        "component_stds": [
+          5.10771096152169,
+          5.356578815623606,
+          10.999312996713854
+        ],
+        "bic": 13504.635864661996,
+        "aic": 13461.519353032574
+      },
+      "zone_counts": {
+        "normal": 211,
+        "warning": 814,
+        "danger": 594
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\tds_gmm.joblib"
+    },
+    "label_distribution": {
+      "normal": 650,
+      "warning": 192,
+      "danger": 777
+    },
+    "classifiers": {
+      "Decision_Tree": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 0.998919836861959,
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\tds_decision_tree.joblib"
+      },
+      "Random_Forest": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 1.0,
+        "feature_importances": {
+          "value": 0.31594598321725376,
+          "diff_1": 0.0068172526198693375,
+          "rolling_mean_5": 0.1425240865928986,
+          "rolling_std_5": 0.02110391919529015,
+          "rolling_mean_10": 0.09658456666329471,
+          "deviation": 0.26711542665927596,
+          "ema_5": 0.14990876505211756
+        },
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\tds_random_forest_threshold.joblib"
+      }
+    },
+    "best_classifier": "Random_Forest"
+  },
+  "light": {
+    "sensor": "light",
+    "n_samples": 1619,
+    "gmm_thresholds": {
+      "method": "GMM",
+      "thresholds": {
+        "warning_low": -1.0,
+        "warning_high": 0.0,
+        "component_means": [
+          -2.0,
+          0.0,
+          0.0
+        ],
+        "component_stds": [
+          0.001,
+          0.001,
+          0.001
+        ],
+        "bic": -19332.67211119801,
+        "aic": -19375.788622827433
+      },
+      "zone_counts": {
+        "normal": 1619,
+        "warning": 0,
+        "danger": 0
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\light_gmm.joblib"
+    },
+    "label_distribution": {
+      "normal": 1619,
+      "warning": 0,
+      "danger": 0
+    },
+    "classifiers": {
+      "Decision_Tree": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 0.0,
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\light_decision_tree.joblib"
+      },
+      "Random_Forest": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 0.0,
+        "feature_importances": {
+          "value": 0.0,
+          "diff_1": 0.0,
+          "rolling_mean_5": 0.0,
+          "rolling_std_5": 0.0,
+          "rolling_mean_10": 0.0,
+          "deviation": 0.0,
+          "ema_5": 0.0
+        },
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\light_random_forest_threshold.joblib"
+      }
+    },
+    "best_classifier": "Decision_Tree"
+  },
+  "axis": {
+    "sensor": "axis",
+    "n_samples": 1619,
+    "gmm_thresholds": {
+      "method": "GMM",
+      "thresholds": {
+        "warning_low": 3.2739966005090997,
+        "warning_high": 16.124690148720916,
+        "component_means": [
+          2.0543927167400837,
+          4.493600484278116,
+          27.755779813163716
+        ],
+        "component_stds": [
+          0.15016587885336374,
+          3.065677688584367,
+          18.638348505271395
+        ],
+        "bic": -205.8116565981868,
+        "aic": -248.9281682276079
+      },
+      "zone_counts": {
+        "normal": 1537,
+        "warning": 64,
+        "danger": 18
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\axis_gmm.joblib"
+    },
+    "label_distribution": {
+      "normal": 1570,
+      "warning": 34,
+      "danger": 15
+    },
+    "classifiers": {
+      "Decision_Tree": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 0.9822222222222223,
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\axis_decision_tree.joblib"
+      },
+      "Random_Forest": {
+        "accuracy": 1.0,
+        "cv_f1_mean": 0.9822222222222223,
+        "feature_importances": {
+          "value": 0.31024734449813013,
+          "diff_1": 0.05769326723356763,
+          "rolling_mean_5": 0.06384683701941514,
+          "rolling_std_5": 0.1192945153525579,
+          "rolling_mean_10": 0.022539175620827807,
+          "deviation": 0.30471036193197126,
+          "ema_5": 0.12166849834353016
+        },
+        "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\threshold\\axis_random_forest_threshold.joblib"
+      }
+    },
+    "best_classifier": "Decision_Tree"
+  }
+}

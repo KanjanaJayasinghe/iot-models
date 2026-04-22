@@ -1,0 +1,488 @@
+{
+  "turbidity": {
+    "regression": {
+      "sensor": "turbidity",
+      "best_model": "Linear_Regression",
+      "all_results": {
+        "Linear_Regression": {
+          "mae": 0.025848791125644522,
+          "rmse": 0.03724065890333609,
+          "r2": 0.9902499774291235
+        },
+        "Polynomial_Regression_deg2": {
+          "mae": 0.5595396216707504,
+          "rmse": 1.955944250002935,
+          "r2": -51.17554819437969
+        },
+        "Random_Forest": {
+          "mae": 0.4107952451590469,
+          "rmse": 0.5962258096038856,
+          "r2": 0.45465980493546426
+        },
+        "Gradient_Boosting": {
+          "mae": 0.7374934552782866,
+          "rmse": 1.0458336442878908,
+          "r2": -0.22411563002515583
+        }
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\turbidity_temporal_Linear_Regression.joblib",
+      "n_samples": 1608,
+      "n_features": 15,
+      "feature_names": [
+        "hour",
+        "day_of_week",
+        "day_of_month",
+        "month",
+        "time_index",
+        "lag_1",
+        "lag_2",
+        "lag_3",
+        "lag_5",
+        "lag_10",
+        "rolling_mean_5",
+        "rolling_std_5",
+        "rolling_mean_10",
+        "rolling_std_10",
+        "ema_5"
+      ]
+    },
+    "holtwinters": {
+      "sensor": "turbidity",
+      "trend_type": "add",
+      "mae": 0.1826821620739508,
+      "rmse": 0.340066388395987,
+      "params": {
+        "smoothing_level": 0.8626808838640211,
+        "smoothing_trend": 0.0
+      },
+      "forecast": [
+        4.241889964520962,
+        4.243102480814878,
+        4.244314997108793,
+        4.245527513402709,
+        4.246740029696624,
+        4.247952545990539,
+        4.249165062284455,
+        4.2503775785783695,
+        4.251590094872285,
+        4.2528026111662,
+        4.254015127460115,
+        4.255227643754031,
+        4.256440160047946,
+        4.257652676341862,
+        4.258865192635777,
+        4.260077708929692,
+        4.261290225223608,
+        4.2625027415175225,
+        4.263715257811438,
+        4.264927774105353
+      ],
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\turbidity_holtwinters.joblib"
+    }
+  },
+  "ph": {
+    "regression": {
+      "sensor": "ph",
+      "best_model": "Linear_Regression",
+      "all_results": {
+        "Linear_Regression": {
+          "mae": 0.01815426201911858,
+          "rmse": 0.02313799638105788,
+          "r2": 0.9969379971825333
+        },
+        "Polynomial_Regression_deg2": {
+          "mae": 0.16624468019725294,
+          "rmse": 0.517937039398366,
+          "r2": -9.91144519013833
+        },
+        "Random_Forest": {
+          "mae": 0.2327286115051182,
+          "rmse": 0.33153642096909647,
+          "r2": 0.6705772117089024
+        },
+        "Gradient_Boosting": {
+          "mae": 0.23921592023510124,
+          "rmse": 0.342592412985277,
+          "r2": 0.6792914570819956
+        }
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\ph_temporal_Linear_Regression.joblib",
+      "n_samples": 1609,
+      "n_features": 15,
+      "feature_names": [
+        "hour",
+        "day_of_week",
+        "day_of_month",
+        "month",
+        "time_index",
+        "lag_1",
+        "lag_2",
+        "lag_3",
+        "lag_5",
+        "lag_10",
+        "rolling_mean_5",
+        "rolling_std_5",
+        "rolling_mean_10",
+        "rolling_std_10",
+        "ema_5"
+      ]
+    },
+    "holtwinters": {
+      "sensor": "ph",
+      "trend_type": "add",
+      "mae": 0.23062862312581675,
+      "rmse": 0.25371135754283985,
+      "params": {
+        "smoothing_level": 0.562417237840062,
+        "smoothing_trend": 0.0
+      },
+      "forecast": [
+        7.847777228798164,
+        7.847659121079246,
+        7.847541013360329,
+        7.8474229056414115,
+        7.847304797922494,
+        7.847186690203576,
+        7.847068582484659,
+        7.846950474765741,
+        7.846832367046823,
+        7.846714259327905,
+        7.8465961516089875,
+        7.8464780438900705,
+        7.846359936171153,
+        7.846241828452235,
+        7.846123720733317,
+        7.8460056130144,
+        7.845887505295482,
+        7.845769397576564,
+        7.8456512898576465,
+        7.845533182138729
+      ],
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\ph_holtwinters.joblib"
+    }
+  },
+  "temperature": {
+    "regression": {
+      "sensor": "temperature",
+      "best_model": "Linear_Regression",
+      "all_results": {
+        "Linear_Regression": {
+          "mae": 0.1851117978059504,
+          "rmse": 0.45653147646574677,
+          "r2": 0.8217901060132868
+        },
+        "Polynomial_Regression_deg2": {
+          "mae": 207.94693835700232,
+          "rmse": 438.90454076028266,
+          "r2": -7421007.902160439
+        },
+        "Random_Forest": {
+          "mae": 0.5787403004877401,
+          "rmse": 1.8148374204125435,
+          "r2": -0.6812803502243653
+        },
+        "Gradient_Boosting": {
+          "mae": 0.542552527630124,
+          "rmse": 0.7620300539528917,
+          "r2": -0.5075471584565894
+        }
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\temperature_temporal_Linear_Regression.joblib",
+      "n_samples": 1608,
+      "n_features": 15,
+      "feature_names": [
+        "hour",
+        "day_of_week",
+        "day_of_month",
+        "month",
+        "time_index",
+        "lag_1",
+        "lag_2",
+        "lag_3",
+        "lag_5",
+        "lag_10",
+        "rolling_mean_5",
+        "rolling_std_5",
+        "rolling_mean_10",
+        "rolling_std_10",
+        "ema_5"
+      ]
+    },
+    "holtwinters": {
+      "sensor": "temperature",
+      "trend_type": "add",
+      "mae": 1.3158275363407683,
+      "rmse": 8.260716715768499,
+      "params": {
+        "smoothing_level": 0.06718831504416517,
+        "smoothing_trend": 0.0
+      },
+      "forecast": [
+        97.78994172496141,
+        97.78830742788793,
+        97.78667313081445,
+        97.78503883374096,
+        97.78340453666748,
+        97.781770239594,
+        97.78013594252052,
+        97.77850164544704,
+        97.77686734837356,
+        97.77523305130006,
+        97.77359875422658,
+        97.7719644571531,
+        97.77033016007962,
+        97.76869586300614,
+        97.76706156593266,
+        97.76542726885918,
+        97.76379297178569,
+        97.76215867471221,
+        97.76052437763873,
+        97.75889008056525
+      ],
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\temperature_holtwinters.joblib"
+    }
+  },
+  "tds": {
+    "regression": {
+      "sensor": "tds",
+      "best_model": "Linear_Regression",
+      "all_results": {
+        "Linear_Regression": {
+          "mae": 0.4118152703163222,
+          "rmse": 0.559095333659599,
+          "r2": 0.9946353814912555
+        },
+        "Polynomial_Regression_deg2": {
+          "mae": 3.85554341526501,
+          "rmse": 14.796317549293514,
+          "r2": -1.5449044153086153
+        },
+        "Random_Forest": {
+          "mae": 8.605142980208619,
+          "rmse": 11.541212676684754,
+          "r2": 0.5067040680609226
+        },
+        "Gradient_Boosting": {
+          "mae": 9.164997233121145,
+          "rmse": 12.751197249469755,
+          "r2": 0.5213179851446716
+        }
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\tds_temporal_Linear_Regression.joblib",
+      "n_samples": 1609,
+      "n_features": 15,
+      "feature_names": [
+        "hour",
+        "day_of_week",
+        "day_of_month",
+        "month",
+        "time_index",
+        "lag_1",
+        "lag_2",
+        "lag_3",
+        "lag_5",
+        "lag_10",
+        "rolling_mean_5",
+        "rolling_std_5",
+        "rolling_mean_10",
+        "rolling_std_10",
+        "ema_5"
+      ]
+    },
+    "holtwinters": {
+      "sensor": "tds",
+      "trend_type": "add",
+      "mae": 24.170094602099276,
+      "rmse": 30.49148562065885,
+      "params": {
+        "smoothing_level": 0.6568847182433619,
+        "smoothing_trend": 0.0
+      },
+      "forecast": [
+        1.0133136282022497,
+        1.0070095664886987,
+        1.0007055047751479,
+        0.994401443061597,
+        0.988097381348046,
+        0.9817933196344951,
+        0.9754892579209442,
+        0.9691851962073933,
+        0.9628811344938424,
+        0.9565770727802916,
+        0.9502730110667407,
+        0.9439689493531898,
+        0.9376648876396388,
+        0.9313608259260879,
+        0.925056764212537,
+        0.9187527024989861,
+        0.9124486407854353,
+        0.9061445790718844,
+        0.8998405173583335,
+        0.8935364556447826
+      ],
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\tds_holtwinters.joblib"
+    }
+  },
+  "light": {
+    "regression": {
+      "sensor": "light",
+      "best_model": "Linear_Regression",
+      "all_results": {
+        "Linear_Regression": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "r2": 1.0
+        },
+        "Polynomial_Regression_deg2": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "r2": 1.0
+        },
+        "Random_Forest": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "r2": 1.0
+        },
+        "Gradient_Boosting": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "r2": 1.0
+        }
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\light_temporal_Linear_Regression.joblib",
+      "n_samples": 1609,
+      "n_features": 15,
+      "feature_names": [
+        "hour",
+        "day_of_week",
+        "day_of_month",
+        "month",
+        "time_index",
+        "lag_1",
+        "lag_2",
+        "lag_3",
+        "lag_5",
+        "lag_10",
+        "rolling_mean_5",
+        "rolling_std_5",
+        "rolling_mean_10",
+        "rolling_std_10",
+        "ema_5"
+      ]
+    },
+    "holtwinters": {
+      "sensor": "light",
+      "trend_type": "add",
+      "mae": 1.58624827950456e-14,
+      "rmse": 1.8303467729645335e-14,
+      "params": {
+        "smoothing_level": 0.6885714285714285,
+        "smoothing_trend": 9.999999999999999e-05
+      },
+      "forecast": [
+        -2.0,
+        -2.0,
+        -2.0000000000000004,
+        -2.0000000000000004,
+        -2.0000000000000004,
+        -2.0000000000000004,
+        -2.0000000000000004,
+        -2.000000000000001,
+        -2.000000000000001,
+        -2.000000000000001,
+        -2.000000000000001,
+        -2.0000000000000013,
+        -2.0000000000000013,
+        -2.0000000000000013,
+        -2.0000000000000013,
+        -2.0000000000000013,
+        -2.0000000000000018,
+        -2.0000000000000018,
+        -2.0000000000000018,
+        -2.0000000000000018
+      ],
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\light_holtwinters.joblib"
+    }
+  },
+  "axis": {
+    "regression": {
+      "sensor": "axis",
+      "best_model": "Linear_Regression",
+      "all_results": {
+        "Linear_Regression": {
+          "mae": 0.09242895763521046,
+          "rmse": 0.17900920491635325,
+          "r2": 0.9771816062199206
+        },
+        "Polynomial_Regression_deg2": {
+          "mae": 2.692316753899652,
+          "rmse": 8.03349840036204,
+          "r2": -6.000741988475992
+        },
+        "Random_Forest": {
+          "mae": 0.5935672655736329,
+          "rmse": 1.5853458699929517,
+          "r2": 0.6761407461946164
+        },
+        "Gradient_Boosting": {
+          "mae": 0.611363714643425,
+          "rmse": 1.6715500960450043,
+          "r2": 0.6975375992749512
+        }
+      },
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\axis_temporal_Linear_Regression.joblib",
+      "n_samples": 1609,
+      "n_features": 15,
+      "feature_names": [
+        "hour",
+        "day_of_week",
+        "day_of_month",
+        "month",
+        "time_index",
+        "lag_1",
+        "lag_2",
+        "lag_3",
+        "lag_5",
+        "lag_10",
+        "rolling_mean_5",
+        "rolling_std_5",
+        "rolling_mean_10",
+        "rolling_std_10",
+        "ema_5"
+      ]
+    },
+    "holtwinters": {
+      "sensor": "axis",
+      "trend_type": "add",
+      "mae": 0.11718856464690892,
+      "rmse": 0.1482942954534841,
+      "params": {
+        "smoothing_level": 0.12386644822989504,
+        "smoothing_trend": 0.0
+      },
+      "forecast": [
+        2.130050703110636,
+        2.1301798389558697,
+        2.130308974801103,
+        2.1304381106463364,
+        2.1305672464915695,
+        2.130696382336803,
+        2.130825518182036,
+        2.1309546540272697,
+        2.131083789872503,
+        2.1312129257177364,
+        2.1313420615629695,
+        2.131471197408203,
+        2.131600333253436,
+        2.1317294690986697,
+        2.131858604943903,
+        2.1319877407891363,
+        2.1321168766343694,
+        2.132246012479603,
+        2.132375148324836,
+        2.1325042841700697
+      ],
+      "model_path": "D:\\Kanjana\\IOT_PROJECT\\ml_models\\trained_models\\temporal\\axis_holtwinters.joblib"
+    }
+  }
+}

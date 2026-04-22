@@ -1,0 +1,35 @@
+{
+  "training_timestamp": "2026-04-20 16:53:06",
+  "total_training_time_seconds": 42.1,
+  "sensors": [
+    "turbidity",
+    "ph",
+    "temperature",
+    "tds",
+    "light",
+    "axis"
+  ],
+  "value_columns": {
+    "turbidity": "NTU",
+    "ph": "pH",
+    "temperature": "_magnitude",
+    "tds": "_magnitude",
+    "light": "Lux",
+    "axis": "_magnitude"
+  },
+  "models_trained": 68,
+  "analysis_types": {
+    "temporal_trend": true,
+    "anomaly_detection": true,
+    "threshold_classification": true,
+    "correlation_analysis": true,
+    "behavior_clustering": true
+  },
+  "phase_times": {
+    "temporal": 10.8,
+    "anomaly": 2.3,
+    "threshold": 8.7,
+    "correlation": 10.9,
+    "clustering": 5.1
+  }
+}
