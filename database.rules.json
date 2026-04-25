@@ -1,0 +1,26 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "test-data": {
+      "Axis": {
+        ".indexOn": ["Timestamp"]
+      },
+      "Light": {
+        ".indexOn": ["Timestamp"]
+      },
+      "TDS": {
+        ".indexOn": ["Timestamp"]
+      },
+      "Temperature": {
+        ".indexOn": ["Timestamp"]
+      },
+      "Turbidity": {
+        ".indexOn": ["Timestamp"]
+      },
+      "pH": {
+        ".indexOn": ["Timestamp"]
+      }
+    }
+  }
+}

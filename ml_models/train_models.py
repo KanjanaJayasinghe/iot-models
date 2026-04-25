@@ -58,12 +58,47 @@ from model_correlation import run_correlation_analysis
 from model_clustering import run_clustering_analysis
 
 
+GENERATED_MODEL_SUBDIRS = [
+    "temporal",
+    "anomaly",
+    "threshold",
+    "correlation",
+    "clustering",
+]
+
+
+def clear_generated_artifacts(model_dir: str) -> None:
+    """Remove generated model artifacts from previous runs."""
+    print("\n  Clearing generated model artifacts from previous run...")
+
+    for subdir in GENERATED_MODEL_SUBDIRS:
+        subdir_path = os.path.join(model_dir, subdir)
+        os.makedirs(subdir_path, exist_ok=True)
+        removed = 0
+
+        for name in os.listdir(subdir_path):
+            path = os.path.join(subdir_path, name)
+            if os.path.isfile(path):
+                os.remove(path)
+                removed += 1
+
+        print(f"    {subdir}: removed {removed} files")
+
+    summary_path = os.path.join(model_dir, "training_summary.json")
+    if os.path.exists(summary_path):
+        os.remove(summary_path)
+        print("    training_summary.json: removed")
+
+
 def main():
     overall_start = time.time()
+    model_dir = os.path.join(os.path.dirname(__file__), "trained_models")
 
     print("╔" + "═" * 68 + "╗")
     print("║   IoT BUOY — COMPLETE ML MODEL TRAINING PIPELINE" + " " * 18 + "║")
     print("╚" + "═" * 68 + "╝")
+
+    clear_generated_artifacts(model_dir)
 
     # ══════════════════════════════════════════════════════════════════════════
     # PHASE 1: DATA COLLECTION FROM FIREBASE
@@ -154,7 +189,6 @@ def main():
 """)
 
     # Count saved models
-    model_dir = os.path.join(os.path.dirname(__file__), "trained_models")
     model_count = 0
     for root, dirs, files in os.walk(model_dir):
         model_count += sum(1 for f in files if f.endswith(".joblib"))

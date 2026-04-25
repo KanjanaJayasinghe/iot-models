@@ -2,6 +2,7 @@ import { memo, useMemo, useEffect, useState } from 'react';
 import { CheckCircle, AlertTriangle, AlertOctagon } from 'lucide-react';
 import { loadThresholdResults } from '../utils/mlResults';
 import { SENSORS, getValueKey } from '../config/sensors';
+import { buildHistoricalAlertModel } from '../utils/analysis';
 
 function AlertSidebar({ sensorData, valueKeys }) {
   const [mlData, setMlData] = useState(null);
@@ -19,10 +20,14 @@ function AlertSidebar({ sensorData, valueKeys }) {
       if (!data?.length || !vKey) return;
 
       const sensorML = mlData?.[sensor.id];
-      const gmm = sensorML?.gmm_thresholds;
+      const model = buildHistoricalAlertModel({
+        sensor,
+        data,
+        dataKey: vKey,
+        thresholdResult: sensorML,
+      });
 
-      if (!gmm) {
-        // ML not loaded yet � use basic check
+      if (!model) {
         const latest = Number(data[data.length - 1]?.[vKey]) || 0;
         items.push({
           type: 'safe',
@@ -33,44 +38,29 @@ function AlertSidebar({ sensorData, valueKeys }) {
         return;
       }
 
-      // Use GMM-learned thresholds from ML
-      const warningLow = gmm.thresholds.warning_low;
-      const warningHigh = gmm.thresholds.warning_high;
-      const zoneCounts = gmm.zone_counts || {};
-
-      const dangers = zoneCounts.danger || 0;
-      const warnings = zoneCounts.warning || 0;
-      const normals = zoneCounts.normal || 0;
-
-      // Check latest readings against ML thresholds
-      const recentData = data.slice(-20);
-      let recentDanger = 0, recentWarning = 0;
-      recentData.forEach(d => {
-        const val = Number(d[vKey]) || 0;
-        if (val < warningLow * 0.8 || val > warningHigh * 1.2) recentDanger++;
-        else if (val < warningLow || val > warningHigh) recentWarning++;
-      });
+      const recentDanger = model.recentCounts.dangerLow + model.recentCounts.dangerHigh;
+      const recentWarning = model.recentCounts.warningLow + model.recentCounts.warningHigh;
 
       if (recentDanger > 0) {
         items.push({
           type: 'danger',
           title: 'Danger',
-          message: `${recentDanger} recent ${sensor.label} readings exceed GMM danger threshold.`,
-          detail: `Range: [${warningLow.toFixed(1)}, ${warningHigh.toFixed(1)}]`,
+          message: `${recentDanger} recent ${sensor.label} readings are in an unusual historical range.`,
+          detail: `Usual band: ${model.bands.normalLow.toFixed(2)} to ${model.bands.normalHigh.toFixed(2)} ${sensor.unit}`,
         });
       } else if (recentWarning > 0) {
         items.push({
           type: 'warning',
           title: 'Warning',
-          message: `${recentWarning} recent ${sensor.label} readings outside GMM warning zone.`,
-          detail: `Range: [${warningLow.toFixed(1)}, ${warningHigh.toFixed(1)}]`,
+          message: `${recentWarning} recent ${sensor.label} readings are outside the usual historical band.`,
+          detail: `Usual band: ${model.bands.normalLow.toFixed(2)} to ${model.bands.normalHigh.toFixed(2)} ${sensor.unit}`,
         });
       } else {
         items.push({
           type: 'safe',
           title: 'Safe',
-          message: `${sensor.label} readings within ML threshold range.`,
-          detail: `GMM zone: [${warningLow.toFixed(1)}, ${warningHigh.toFixed(1)}]`,
+          message: `${sensor.label} readings remain inside the usual historical band.`,
+          detail: `Usual band: ${model.bands.normalLow.toFixed(2)} to ${model.bands.normalHigh.toFixed(2)} ${sensor.unit}`,
         });
       }
     });

@@ -41,10 +41,38 @@ warnings.filterwarnings("ignore")
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "trained_models", "temporal")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
+FORECAST_HORIZON_HOURS = 48
+DEFAULT_INTERVAL_SECONDS = 60
+MIN_INTERVAL_SECONDS = 30
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # FEATURE ENGINEERING FOR TIME-SERIES
 # ══════════════════════════════════════════════════════════════════════════════
+def estimate_interval_seconds(df: pd.DataFrame) -> int:
+    """Estimate the typical sensor sampling interval from recent timestamps."""
+    if "Timestamp" not in df.columns or len(df) < 2:
+        return DEFAULT_INTERVAL_SECONDS
+
+    timestamps = pd.to_datetime(df["Timestamp"], errors="coerce").dropna()
+    if len(timestamps) < 2:
+        return DEFAULT_INTERVAL_SECONDS
+
+    deltas = timestamps.diff().dropna().dt.total_seconds()
+    deltas = deltas[deltas > 0]
+    if deltas.empty:
+        return DEFAULT_INTERVAL_SECONDS
+
+    median_seconds = int(round(float(deltas.tail(240).median())))
+    return max(MIN_INTERVAL_SECONDS, median_seconds)
+
+
+def estimate_forecast_steps(interval_seconds: int, forecast_horizon_hours: int = FORECAST_HORIZON_HOURS) -> int:
+    """Convert a desired hour-based forecast horizon into model forecast steps."""
+    safe_interval = max(MIN_INTERVAL_SECONDS, int(interval_seconds or DEFAULT_INTERVAL_SECONDS))
+    return max(20, int(np.ceil((forecast_horizon_hours * 3600) / safe_interval)))
+
+
 def create_temporal_features(df: pd.DataFrame, value_col: str) -> pd.DataFrame:
     """
     Create time-based features from timestamp and lag features from values.
@@ -102,9 +130,9 @@ def train_temporal_models(df: pd.DataFrame, value_col: str, sensor_id: str) -> d
 
     Evaluation: TimeSeriesSplit cross-validation (5 folds)
     """
-    print(f"\n{'─' * 60}")
-    print(f"  TEMPORAL TREND ANALYSIS — Sensor: {sensor_id.upper()}")
-    print(f"{'─' * 60}")
+    print(f"\n{'-' * 60}")
+    print(f"  TEMPORAL TREND ANALYSIS - Sensor: {sensor_id.upper()}")
+    print(f"{'-' * 60}")
 
     # ── Feature Engineering ──
     features = create_temporal_features(df, value_col)
@@ -117,6 +145,10 @@ def train_temporal_models(df: pd.DataFrame, value_col: str, sensor_id: str) -> d
 
     if len(X) < 20:
         print(f"  [SKIP] Not enough data for {sensor_id} ({len(X)} samples)")
+        return {}
+
+    if len(np.unique(y)) < 3 or float(np.nanstd(y)) < 1e-9:
+        print(f"  [SKIP] Not enough variation for {sensor_id}")
         return {}
 
     print(f"  Data points: {len(X)} | Features: {X.shape[1]}")
@@ -150,7 +182,7 @@ def train_temporal_models(df: pd.DataFrame, value_col: str, sensor_id: str) -> d
     for model_name, model in models.items():
         fold_metrics = {"mae": [], "rmse": [], "r2": []}
 
-        for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
+        for _, (train_idx, test_idx) in enumerate(tscv.split(X)):
             X_train, X_test = X[train_idx], X[test_idx]
             y_train, y_test = y[train_idx], y[test_idx]
 
@@ -169,17 +201,21 @@ def train_temporal_models(df: pd.DataFrame, value_col: str, sensor_id: str) -> d
             fold_metrics["rmse"].append(rmse)
             fold_metrics["r2"].append(r2)
 
-        # Average metrics across folds
-        avg_metrics = {k: float(np.mean(v)) for k, v in fold_metrics.items()}
+        avg_metrics = {
+            metric_name: float(np.mean(metric_values))
+            for metric_name, metric_values in fold_metrics.items()
+        }
         results[model_name] = avg_metrics
 
-        print(f"  {model_name:>30s}  |  MAE={avg_metrics['mae']:.4f}  "
-              f"RMSE={avg_metrics['rmse']:.4f}  R²={avg_metrics['r2']:.4f}")
+        print(
+            f"  {model_name:>30s}  |  MAE={avg_metrics['mae']:.4f}  "
+            f"RMSE={avg_metrics['rmse']:.4f}  R2={avg_metrics['r2']:.4f}"
+        )
 
     # ── Select Best Model (lowest MAE) ──
     best_name = min(results, key=lambda k: results[k]["mae"])
     best_model = models[best_name]
-    print(f"\n  ★ Best Model: {best_name} (MAE={results[best_name]['mae']:.4f})")
+    print(f"\n  Best Model: {best_name} (MAE={results[best_name]['mae']:.4f})")
 
     # ── Retrain Best Model on FULL Dataset ──
     print(f"  Re-training {best_name} on full dataset ({len(X)} samples)...")
@@ -188,7 +224,7 @@ def train_temporal_models(df: pd.DataFrame, value_col: str, sensor_id: str) -> d
     # ── Save Trained Model ──
     model_path = os.path.join(MODEL_DIR, f"{sensor_id}_temporal_{best_name}.joblib")
     joblib.dump(best_model, model_path)
-    print(f"  Saved → {model_path}")
+    print(f"  Saved -> {model_path}")
 
     return {
         "sensor": sensor_id,
@@ -205,16 +241,20 @@ def train_temporal_models(df: pd.DataFrame, value_col: str, sensor_id: str) -> d
 # HOLT-WINTERS EXPONENTIAL SMOOTHING (STATSMODELS)
 # ══════════════════════════════════════════════════════════════════════════════
 def train_holtwinters(df: pd.DataFrame, value_col: str, sensor_id: str,
-                      forecast_steps: int = 20) -> dict:
+                      forecast_steps: int = 20, interval_seconds: int = DEFAULT_INTERVAL_SECONDS) -> dict:
     """
     Train Holt-Winters Exponential Smoothing for time-series forecasting.
     Automatically selects additive vs multiplicative trend.
     """
-    print(f"\n  Holt-Winters Exponential Smoothing — {sensor_id}")
+    print(f"\n  Holt-Winters Exponential Smoothing - {sensor_id}")
 
     values = df[value_col].dropna().values
     if len(values) < 20:
         print(f"  [SKIP] Not enough data ({len(values)} points)")
+        return {}
+
+    if len(np.unique(values)) < 3 or float(np.nanstd(values)) < 1e-9:
+        print("  [SKIP] Not enough variation for Holt-Winters")
         return {}
 
     # Train/test split (80/20, preserving time order)
@@ -258,8 +298,10 @@ def train_holtwinters(df: pd.DataFrame, value_col: str, sensor_id: str,
         print("  [FAIL] Holt-Winters could not fit")
         return {}
 
+    forecast_horizon_hours = (forecast_steps * max(interval_seconds, MIN_INTERVAL_SECONDS)) / 3600
     print(f"  Trend type: {best_hw_result['trend']} | "
           f"MAE={best_hw_result['mae']:.4f} | RMSE={best_hw_result['rmse']:.4f}")
+    print(f"  Forecast horizon: {forecast_horizon_hours:.1f} hours ({forecast_steps} steps @ {interval_seconds}s)")
 
     # ── Retrain on full data and produce forecast ──
     final_model = ExponentialSmoothing(
@@ -270,17 +312,32 @@ def train_holtwinters(df: pd.DataFrame, value_col: str, sensor_id: str,
     ).fit(optimized=True)
 
     forecast = final_model.forecast(forecast_steps)
+    recent_window = values[-min(len(values), 48):]
 
     # Save
     model_path = os.path.join(MODEL_DIR, f"{sensor_id}_holtwinters.joblib")
     joblib.dump(final_model, model_path)
-    print(f"  Saved → {model_path}")
+    print(f"  Saved -> {model_path}")
 
     return {
         "sensor": sensor_id,
+        "forecast_method": "Holt-Winters",
         "trend_type": best_hw_result["trend"],
         "mae": best_hw_result["mae"],
         "rmse": best_hw_result["rmse"],
+        "forecast_steps": int(forecast_steps),
+        "forecast_interval_seconds": int(interval_seconds),
+        "forecast_interval_minutes": float(interval_seconds / 60),
+        "forecast_horizon_hours": float(forecast_horizon_hours),
+        "train_points": int(len(train_vals)),
+        "validation_points": int(len(test_vals)),
+        "last_observed_value": float(values[-1]),
+        "recent_mean": float(np.mean(recent_window)),
+        "recent_min": float(np.min(recent_window)),
+        "recent_max": float(np.max(recent_window)),
+        "forecast_mean": float(np.mean(forecast)),
+        "forecast_min": float(np.min(forecast)),
+        "forecast_max": float(np.max(forecast)),
         "params": best_hw_result["params"],
         "forecast": forecast.tolist(),
         "model_path": model_path,
@@ -309,11 +366,20 @@ def run_temporal_analysis(all_data: dict, value_cols: dict) -> dict:
         if val_col is None or val_col not in df.columns:
             continue
 
+        interval_seconds = estimate_interval_seconds(df)
+        forecast_steps = estimate_forecast_steps(interval_seconds)
+
         # Regression models
         reg_result = train_temporal_models(df, val_col, sensor_id)
 
         # Holt-Winters
-        hw_result = train_holtwinters(df, val_col, sensor_id)
+        hw_result = train_holtwinters(
+            df,
+            val_col,
+            sensor_id,
+            forecast_steps=forecast_steps,
+            interval_seconds=interval_seconds,
+        )
 
         all_results[sensor_id] = {
             "regression": reg_result,
@@ -330,6 +396,6 @@ def run_temporal_analysis(all_data: dict, value_cols: dict) -> dict:
         }
     with open(summary_path, "w") as f:
         json.dump(serializable, f, indent=2, default=str)
-    print(f"\n  Summary saved → {summary_path}")
+    print(f"\n  Summary saved -> {summary_path}")
 
     return all_results

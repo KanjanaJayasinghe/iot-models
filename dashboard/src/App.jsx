@@ -11,10 +11,38 @@ import CorrelationChart from './components/CorrelationChart';
 import AnomalyChart from './components/AnomalyChart';
 import ClusterChart from './components/ClusterChart';
 import ForecastChart from './components/ForecastChart';
+import ForecastOverview from './components/ForecastOverview';
+import ForecastTechnicalPanel from './components/ForecastTechnicalPanel';
 import DataMonitoring from './components/DataMonitoring';
 import DateRangeFilter from './components/DateRangeFilter';
 import { computeStats } from './utils/analysis';
 import { loadThresholdResults, loadTemporalResults } from './utils/mlResults';
+import { buildForecastViewModel } from './utils/forecasting';
+
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function startOfDay(date) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function endOfDay(date) {
+  const next = new Date(date);
+  next.setHours(23, 59, 59, 999);
+  return next;
+}
+
+function shiftDateInputValue(value, dayOffset) {
+  const next = new Date(`${value}T00:00:00`);
+  next.setDate(next.getDate() + dayOffset);
+  return toDateInputValue(next);
+}
 
 export default function App() {
   const [dateRange, setDateRange] = useState(null); // null = live mode
@@ -202,38 +230,169 @@ function PageHeader({ title, subtitle }) {
   );
 }
 
+function AnomalyDateFilter({ mode, selectedDay, latestDay, onLatest24h, onSelectDay }) {
+  const canMoveForward = Boolean(selectedDay) && selectedDay < latestDay;
+
+  return (
+    <div
+      className="card fade-in"
+      style={{
+        padding: '14px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16,
+        flexWrap: 'wrap',
+      }}
+    >
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)' }}>Anomaly view window</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+          Default view shows the latest 24 hours. Choose a day to inspect one day at a time.
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <button
+          onClick={onLatest24h}
+          style={{
+            padding: '8px 14px',
+            borderRadius: 10,
+            border: mode === 'latest' ? '1.5px solid #2563eb' : '1.5px solid var(--border)',
+            background: mode === 'latest' ? '#eff6ff' : '#fff',
+            color: mode === 'latest' ? '#2563eb' : 'var(--text-secondary)',
+            fontWeight: 700,
+            fontSize: 12,
+            cursor: 'pointer',
+          }}
+        >
+          Latest 24h
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => onSelectDay(shiftDateInputValue(selectedDay || latestDay, -1))}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 10,
+              border: '1.5px solid var(--border)',
+              background: '#fff',
+              color: 'var(--text-secondary)',
+              fontWeight: 700,
+              fontSize: 12,
+              cursor: 'pointer',
+            }}
+          >
+            Prev day
+          </button>
+
+          <input
+            type="date"
+            value={selectedDay || latestDay}
+            max={latestDay}
+            onChange={(event) => onSelectDay(event.target.value)}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 10,
+              border: '1.5px solid var(--border)',
+              fontSize: 12,
+              color: 'var(--text-primary)',
+              background: '#fff',
+            }}
+          />
+
+          <button
+            onClick={() => canMoveForward && onSelectDay(shiftDateInputValue(selectedDay, 1))}
+            disabled={!canMoveForward}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 10,
+              border: '1.5px solid var(--border)',
+              background: canMoveForward ? '#fff' : '#f8fafc',
+              color: canMoveForward ? 'var(--text-secondary)' : 'var(--text-faint)',
+              fontWeight: 700,
+              fontSize: 12,
+              cursor: canMoveForward ? 'pointer' : 'default',
+            }}
+          >
+            Next day
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ══════════════════════════════
    PAGE 1 — Forecasting
    ══════════════════════════════ */
 function ForecastingView({ sensorData, valueKeys }) {
   const [sel, setSel] = useState(null);
-  const active = useActiveSensors(sensorData, sel);
+  const [temporalResults, setTemporalResults] = useState(null);
+
+  useEffect(() => {
+    loadTemporalResults().then(setTemporalResults);
+  }, []);
+
+  const forecastSensorData = useMemo(() => {
+    if (!temporalResults) return sensorData;
+
+    return Object.fromEntries(
+      SENSORS
+        .filter(sensor => sensorData[sensor.id]?.length > 0)
+        .filter(sensor => temporalResults?.[sensor.id]?.holtwinters?.forecast?.length > 0)
+        .map(sensor => [sensor.id, sensorData[sensor.id]])
+    );
+  }, [sensorData, temporalResults]);
+
+  const unavailableForecastSensors = useMemo(() => {
+    if (!temporalResults) return [];
+
+    return SENSORS
+      .filter(sensor => sensorData[sensor.id]?.length > 0)
+      .filter(sensor => !(temporalResults?.[sensor.id]?.holtwinters?.forecast?.length > 0))
+      .map(sensor => sensor.label);
+  }, [sensorData, temporalResults]);
+
+  const active = useActiveSensors(forecastSensorData, sel);
+
+  useEffect(() => {
+    if (sel && !forecastSensorData[sel]) {
+      setSel(null);
+    }
+  }, [sel, forecastSensorData]);
+
+  const forecastCards = useMemo(() => active.map(sensor => {
+    const valueKey = getValueKey(sensor.id, valueKeys);
+    return buildForecastViewModel({
+      sensor,
+      data: sensorData[sensor.id],
+      dataKey: valueKey,
+      temporalResult: temporalResults?.[sensor.id],
+    });
+  }).filter(Boolean), [active, sensorData, temporalResults, valueKeys]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <PageHeader
         title="Time-Series Forecasting"
-        subtitle="ML models: Linear Regression, Polynomial, Random Forest, Gradient Boosting + Holt-Winters (scikit-learn trained)"
+        subtitle="Short-term water-quality outlooks designed for coastal field teams. Technical model diagnostics are listed separately at the bottom of this page."
       />
-      <SensorFilter sensorData={sensorData} selected={sel} onSelect={setSel} />
+      <SensorFilter sensorData={forecastSensorData} selected={sel} onSelect={setSel} />
 
-      {/* Forecast Charts — full width, one per row for readability */}
+      {unavailableForecastSensors.length > 0 && (
+        <div className="card fade-in" style={{ padding: '14px 18px', border: '1px solid #fde68a', background: '#fffbeb', color: '#92400e' }}>
+          Forecasts are hidden for {unavailableForecastSensors.join(', ')} because the current training run flagged those sensor readings as invalid or unsuitable for a reliable forecast.
+        </div>
+      )}
+
+      <ForecastOverview forecasts={forecastCards} />
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {active.map(s => {
-          const vKey = getValueKey(s.id, valueKeys);
-          return (
-            <ForecastChart
-              key={s.id}
-              data={sensorData[s.id]}
-              dataKey={vKey}
-              title={`${s.label} Forecast`}
-              color={s.color}
-              unit={` ${s.unit}`}
-              sensorId={s.id}
-            />
-          );
-        })}
+        {forecastCards.map(forecast => <ForecastChart key={forecast.key} forecast={forecast} />)}
       </div>
+
+      <ForecastTechnicalPanel forecasts={forecastCards} />
     </div>
   );
 }
@@ -243,7 +402,59 @@ function ForecastingView({ sensorData, valueKeys }) {
    ══════════════════════════════ */
 function AnomaliesView({ sensorData, valueKeys }) {
   const [sel, setSel] = useState(null);
-  const active = useActiveSensors(sensorData, sel);
+  const [filterMode, setFilterMode] = useState('latest');
+  const [selectedDay, setSelectedDay] = useState('');
+
+  const latestTimestamp = useMemo(() => {
+    return Object.values(sensorData)
+      .flat()
+      .reduce((maxTs, row) => Math.max(maxTs, row?.ts || 0), 0);
+  }, [sensorData]);
+
+  const latestDate = useMemo(() => new Date(latestTimestamp || Date.now()), [latestTimestamp]);
+  const latestDay = useMemo(() => toDateInputValue(latestDate), [latestDate]);
+
+  useEffect(() => {
+    if (!selectedDay) {
+      setSelectedDay(latestDay);
+    }
+  }, [latestDay, selectedDay]);
+
+  const filteredSensorData = useMemo(() => {
+    const windowEnd = latestTimestamp || Date.now();
+    const latestStart = windowEnd - (24 * 60 * 60 * 1000);
+    const dayStart = selectedDay ? startOfDay(new Date(`${selectedDay}T00:00:00`)).getTime() : latestStart;
+    const dayEnd = selectedDay ? endOfDay(new Date(`${selectedDay}T00:00:00`)).getTime() : windowEnd;
+
+    return Object.fromEntries(
+      Object.entries(sensorData).map(([sensorId, rows]) => {
+        const filteredRows = (rows || []).filter((row) => {
+          const timestamp = row?.ts || 0;
+          if (filterMode === 'day') {
+            return timestamp >= dayStart && timestamp <= dayEnd;
+          }
+          return timestamp >= latestStart && timestamp <= windowEnd;
+        });
+        return [sensorId, filteredRows];
+      })
+    );
+  }, [filterMode, latestTimestamp, selectedDay, sensorData]);
+
+  const active = useActiveSensors(filteredSensorData, sel);
+
+  useEffect(() => {
+    if (sel && !filteredSensorData[sel]?.length) {
+      setSel(null);
+    }
+  }, [filteredSensorData, sel]);
+
+  const activeRecordCount = useMemo(() => {
+    return active.reduce((total, sensor) => total + (filteredSensorData[sensor.id]?.length || 0), 0);
+  }, [active, filteredSensorData]);
+
+  const windowLabel = filterMode === 'day'
+    ? `Showing readings for ${selectedDay || latestDay}`
+    : 'Showing the latest 24 hours of readings';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -251,7 +462,28 @@ function AnomaliesView({ sensorData, valueKeys }) {
         title="Anomaly & Outlier Detection"
         subtitle="ML models: Isolation Forest, Local Outlier Factor, One-Class SVM, DBSCAN (scikit-learn trained)"
       />
-      <SensorFilter sensorData={sensorData} selected={sel} onSelect={setSel} />
+      <AnomalyDateFilter
+        mode={filterMode}
+        selectedDay={selectedDay}
+        latestDay={latestDay}
+        onLatest24h={() => setFilterMode('latest')}
+        onSelectDay={(value) => {
+          setSelectedDay(value);
+          setFilterMode('day');
+        }}
+      />
+      <SensorFilter sensorData={filteredSensorData} selected={sel} onSelect={setSel} />
+
+      <div className="card fade-in" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>{windowLabel}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{activeRecordCount.toLocaleString()} readings in the current anomaly view</div>
+      </div>
+
+      {active.length === 0 && (
+        <div className="card fade-in" style={{ padding: '18px 20px', color: 'var(--text-muted)' }}>
+          No anomaly readings are available for this day. Choose another date or switch back to the latest 24 hours.
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {active.map(s => {
@@ -259,7 +491,7 @@ function AnomaliesView({ sensorData, valueKeys }) {
           return (
             <AnomalyChart
               key={s.id}
-              data={sensorData[s.id]}
+              data={filteredSensorData[s.id]}
               dataKey={vKey}
               title={`${s.label} Anomaly Detection`}
               color={s.color}
@@ -283,7 +515,7 @@ function ClustersView({ sensorData, valueKeys }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <PageHeader
         title="Behavior Pattern Clusters"
-        subtitle="ML models: K-Means with optimal k (silhouette analysis), GMM, Hierarchical Clustering (scikit-learn trained)"
+        subtitle="This page groups repeated sensor conditions into plain-language site states so coastal teams can see what is usual, what is less common, and which patterns deserve closer field attention."
       />
       <SensorFilter sensorData={sensorData} selected={sel} onSelect={setSel} />
 
@@ -417,28 +649,25 @@ function AlertsView({ sensorData, valueKeys }) {
       const vKey = getValueKey(sensor.id, valueKeys);
       if (!data?.length || !vKey) return;
 
-      const gmm = mlThresholds[sensor.id]?.gmm_thresholds;
-      if (!gmm) return;
+      const model = buildHistoricalAlertModel({
+        sensor,
+        data,
+        dataKey: vKey,
+        thresholdResult: mlThresholds[sensor.id],
+      });
+      if (!model) return;
 
-      const wLow = gmm.thresholds.warning_low;
-      const wHigh = gmm.thresholds.warning_high;
-
-      data.forEach(d => {
-        const val = Number(d[vKey]) || 0;
-        let status = null;
-        if (val < wLow * 0.8 || val > wHigh * 1.2) status = 'danger';
-        else if (val < wLow || val > wHigh) status = 'warning';
-        if (status) {
+      model.alertItems.forEach(item => {
           items.push({
             sensor: sensor.label,
             sensorColor: sensor.color,
-            value: val.toFixed(2),
+            value: item.value.toFixed(2),
             unit: sensor.unit,
-            status,
-            time: d.Timestamp,
-            threshold: `GMM [${wLow.toFixed(1)}, ${wHigh.toFixed(1)}]`,
+            status: item.status.level.startsWith('danger') ? 'danger' : 'warning',
+            statusLabel: item.status.label,
+            time: item.time,
+            threshold: item.thresholdText,
           });
-        }
       });
     });
     return items.slice(-200).reverse();
@@ -469,7 +698,7 @@ function AlertsView({ sensorData, valueKeys }) {
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.sensorColor }} />
             <div style={{ flex: 1 }}>
               <span style={{ fontWeight: 700, color: statusColors[a.status], fontSize: 13 }}>
-                {a.status.toUpperCase()}
+                {a.statusLabel}
               </span>
               <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>
                 {a.sensor} = {a.value} {a.unit}
@@ -532,7 +761,7 @@ function SettingsView() {
               ['Database URL', 'iot-buoy-default-rtdb'],
               ['Hosting', 'iot-buoy.web.app'],
               ['Real-time method', 'onChildAdded + debounce 500ms'],
-              ['Historical load', 'get() limitToLast(100) per sensor'],
+              ['Data load', 'get() full history per sensor'],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', gap: 12, fontSize: 12 }}>
                 <span style={{ color: 'var(--text-faint)', fontWeight: 600, minWidth: 140 }}>{k}</span>

@@ -3,106 +3,120 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer
 } from 'recharts';
+import { Calendar, RefreshCw } from 'lucide-react';
 import { formatTimestamp } from '../utils/formatters';
-import { movingAverage, linearRegression, exponentialSmoothing } from '../utils/analysis';
-import { SENSORS, getValueKey } from '../config/sensors';
+import { SENSORS } from '../config/sensors';
 
-function TrendChart({ sensorData, valueKeys, mergedData }) {
-  const [filter, setFilter] = useState('all');
-  const [activeSensors, setActiveSensors] = useState(() =>
-    new Set([SENSORS[0].id])
-  );
+function toInputDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function TrendChart({ sensorData, valueKeys, mergedData, dateRange, onDateRangeChange }) {
+  const [activeSensors, setActiveSensors] = useState(() => new Set([SENSORS[0].id]));
+
+  // Local date inputs — initialise from any active dateRange
+  const [startVal, setStartVal] = useState(dateRange ? toInputDate(dateRange.start) : '');
+  const [endVal,   setEndVal]   = useState(dateRange ? toInputDate(dateRange.end)   : '');
 
   const toggleSensor = (id) => {
     setActiveSensors(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
 
+  function applyRange() {
+    if (!startVal || !endVal) return;
+    const start = new Date(startVal); start.setHours(0, 0, 0, 0);
+    const end   = new Date(endVal);   end.setHours(23, 59, 59, 999);
+    if (start > end) return;
+    if (onDateRangeChange) onDateRangeChange({ start, end });
+  }
+
+  function clearRange() {
+    setStartVal('');
+    setEndVal('');
+    if (onDateRangeChange) onDateRangeChange(null);
+  }
+
+  // Down-sample to max 300 points for performance, keeping shape
   const chartData = useMemo(() => {
     if (!mergedData?.length) return [];
     let src = mergedData;
-
-    // Date-relative filters — work correctly regardless of how many records are loaded
-    const now = Date.now();
-    if (filter === '24h') {
-      src = src.filter(d => d.ts && (now - d.ts) <= 24 * 60 * 60 * 1000);
-    } else if (filter === '7d') {
-      src = src.filter(d => d.ts && (now - d.ts) <= 7 * 24 * 60 * 60 * 1000);
-    } else if (filter === '30d') {
-      src = src.filter(d => d.ts && (now - d.ts) <= 30 * 24 * 60 * 60 * 1000);
-    }
-    // filter === 'all' → use everything loaded (may be 500 live records or full date-range batch)
-
-    // Down-sample to max 60 points for chart performance
-    if (src.length > 60) {
-      const step = Math.ceil(src.length / 60);
+    if (src.length > 300) {
+      const step = Math.ceil(src.length / 300);
       src = src.filter((_, i) => i % step === 0);
     }
+    return src;
+  }, [mergedData]);
 
-    let result = src.map((d, i) => ({ ...d, index: i }));
-
-    // Only compute ML overlays for active sensors
-    SENSORS.forEach(sensor => {
-      if (!activeSensors.has(sensor.id)) return;
-      const key = sensor.id;
-
-      // Moving average
-      result = movingAverage(result, key, 5);
-
-      // Linear regression prediction
-      const reg = linearRegression(result, 'index', key);
-      const smooth = exponentialSmoothing(result, key, 0.3);
-
-      result = result.map((d, i) => ({
-        ...d,
-        [`${key}_pred`]: parseFloat(reg.predict(d.index).toFixed(3)),
-        [`${key}_ml`]: smooth[i]?.[`${key}_ES`] != null
-          ? parseFloat(Number(smooth[i][`${key}_ES`]).toFixed(3))
-          : (Number(d[key]) || 0),
-      }));
-    });
-
-    return result;
-  }, [mergedData, filter, activeSensors]);
+  const active = SENSORS.filter(s => activeSensors.has(s.id));
+  const totalRecords = mergedData?.length ?? 0;
 
   if (!chartData.length) {
     return (
       <div className="card fade-in" style={{ padding: 32, textAlign: 'center' }}>
-        <p style={{ color: '#94a3b8' }}>No trend data available yet.</p>
+        <p style={{ color: '#94a3b8' }}>No data available. Select a date range to load historical records.</p>
       </div>
     );
   }
 
-  const active = SENSORS.filter(s => activeSensors.has(s.id));
-
   return (
     <div className="chart-container fade-in">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h3 className="chart-title">Trend Analysis</h3>
-          <p className="chart-subtitle">Real-time sensor readings with regression &amp; smoothing</p>
+          <h3 className="chart-title">Historical Sensor Data</h3>
+          <p className="chart-subtitle">
+            {dateRange
+              ? `${toInputDate(dateRange.start)} → ${toInputDate(dateRange.end)} · ${totalRecords.toLocaleString()} records loaded`
+              : `Live view · ${totalRecords.toLocaleString()} records loaded`}
+          </p>
         </div>
-        <select
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-          style={{
-            padding: '8px 14px', borderRadius: 10,
-            border: '1.5px solid var(--border-strong)',
-            fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)',
-            background: 'var(--bg-surface)', cursor: 'pointer', outline: 'none',
-            fontFamily: 'var(--font-main)',
-          }}
-        >
-          <option value="all">All Loaded Data</option>
-          <option value="24h">Last 24 Hours</option>
-          <option value="7d">Last 7 Days</option>
-          <option value="30d">Last 30 Days</option>
-        </select>
+
+        {/* Inline date range picker */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Calendar size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+          <input
+            type="date"
+            value={startVal}
+            onChange={e => setStartVal(e.target.value)}
+            style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid var(--border)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-main)' }}
+          />
+          <span style={{ color: '#94a3b8', fontSize: 12 }}>to</span>
+          <input
+            type="date"
+            value={endVal}
+            onChange={e => setEndVal(e.target.value)}
+            style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid var(--border)', fontSize: 12, outline: 'none', fontFamily: 'var(--font-main)' }}
+          />
+          <button
+            onClick={applyRange}
+            disabled={!startVal || !endVal}
+            style={{
+              padding: '7px 16px', borderRadius: 9, border: 'none',
+              background: (!startVal || !endVal) ? '#e2e8f0' : 'linear-gradient(135deg,#2563eb,#0891b2)',
+              color: (!startVal || !endVal) ? '#94a3b8' : 'white',
+              fontWeight: 700, fontSize: 12, cursor: (!startVal || !endVal) ? 'default' : 'pointer',
+              fontFamily: 'var(--font-main)',
+            }}
+          >
+            Load
+          </button>
+          {dateRange && (
+            <button
+              onClick={clearRange}
+              title="Back to live view"
+              style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid var(--border)', background: 'white', color: '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              <RefreshCw size={12} /> Live
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Sensor Toggles */}
@@ -112,30 +126,17 @@ function TrendChart({ sensorData, valueKeys, mergedData }) {
             key={s.id}
             onClick={() => toggleSensor(s.id)}
             style={{
-              padding: '6px 16px',
-              borderRadius: 50,
-              fontSize: 12,
-              fontWeight: 700,
+              padding: '6px 16px', borderRadius: 50, fontSize: 12, fontWeight: 700,
               border: `1.5px solid ${s.color}`,
               background: activeSensors.has(s.id) ? s.color : 'transparent',
               color: activeSensors.has(s.id) ? 'white' : s.color,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
+              cursor: 'pointer', transition: 'all 0.2s',
               boxShadow: activeSensors.has(s.id) ? `0 4px 12px ${s.color}44` : 'none',
             }}
           >
             {s.label}
           </button>
         ))}
-      </div>
-
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
-        {active.map(s => (
-          <LegendDot key={s.id} color={s.color} label={`${s.label} Data`} />
-        ))}
-        <LegendDot color="#14b8a6" label="Predictions" />
-        <LegendDot color="#8b5cf6" label="ML Smoothing" />
       </div>
 
       {/* Chart */}
@@ -145,7 +146,7 @@ function TrendChart({ sensorData, valueKeys, mergedData }) {
             <defs>
               {active.map(s => (
                 <linearGradient key={s.id} id={`grad-${s.id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={s.color} stopOpacity={0.2} />
+                  <stop offset="0%" stopColor={s.color} stopOpacity={0.22} />
                   <stop offset="100%" stopColor={s.color} stopOpacity={0} />
                 </linearGradient>
               ))}
@@ -171,8 +172,7 @@ function TrendChart({ sensorData, valueKeys, mergedData }) {
               labelFormatter={v => formatTimestamp(v)}
               formatter={(value, name) => [Number(value).toFixed(2), name]}
             />
-
-            {/* Actual data lines */}
+            {/* Raw sensor data lines only */}
             {active.map(s => (
               <Area
                 key={s.id}
@@ -187,47 +187,18 @@ function TrendChart({ sensorData, valueKeys, mergedData }) {
                 isAnimationActive={false}
               />
             ))}
-
-            {/* Prediction lines (dashed) */}
-            {active.map(s => (
-              <Area
-                key={`${s.id}_pred`}
-                type="monotone"
-                dataKey={`${s.id}_pred`}
-                name={`${s.label} Predict`}
-                stroke="#14b8a6"
-                strokeWidth={1.5}
-                strokeDasharray="6 4"
-                fill="none"
-                dot={false}
-                isAnimationActive={false}
-              />
-            ))}
-
-            {/* ML smoothing lines */}
-            {active.map(s => (
-              <Area
-                key={`${s.id}_ml`}
-                type="monotone"
-                dataKey={`${s.id}_ml`}
-                name={`${s.label} ML`}
-                stroke="#8b5cf6"
-                strokeWidth={1.5}
-                strokeDasharray="4 4"
-                fill="none"
-                dot={false}
-                isAnimationActive={false}
-              />
-            ))}
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Bottom legend */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 16 }}>
-        <LegendDot color="#3b82f6" label="Time Series Data" filled />
-        <LegendDot color="#14b8a6" label="Linear Regression" filled />
-        <LegendDot color="#8b5cf6" label="Exponential Smoothing" filled />
+      {/* Legend */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 14, flexWrap: 'wrap' }}>
+        {active.map(s => (
+          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: s.color }} />
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{s.label}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -235,15 +206,3 @@ function TrendChart({ sensorData, valueKeys, mergedData }) {
 
 export default memo(TrendChart);
 
-function LegendDot({ color, label, filled }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <div style={{
-        width: 10, height: 10, borderRadius: '50%',
-        background: filled ? color : 'transparent',
-        border: `2px solid ${color}`,
-      }} />
-      <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{label}</span>
-    </div>
-  );
-}

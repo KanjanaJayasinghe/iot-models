@@ -1,12 +1,44 @@
 ﻿import { useState, useEffect, useRef, useMemo } from 'react';
-import { database, ref, get, onChildAdded, query, limitToLast, orderByKey, orderByChild, startAt, endAt, startAfter } from '../firebase';
-import { SENSORS, detectValueKeys } from '../config/sensors';
-
-// Live mode: load last N records per sensor
-const LIVE_POINTS = 500;
+import { database, ref, get, onChildAdded, query, orderByKey, orderByChild, startAt, endAt, startAfter } from '../firebase';
+import { SENSORS, detectValueKeys, getValueKey } from '../config/sensors';
 
 // Debounce ms for real-time updates — avoids a re-render per new record
 const DEBOUNCE_MS = 500;
+const TIMESTAMP_DB_PATTERN = /^(\d{4})-(\d{2})-(\d{2})\s(\d{2}):(\d{2}):(\d{2})$/;
+
+function parseTimestampToMs(ts) {
+  if (!ts || typeof ts !== 'string') return 0;
+
+  // Supports both ISO strings and DB format: YYYY-MM-DD HH:mm:ss
+  if (ts.includes('T')) {
+    const ms = new Date(ts).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  }
+
+  const m = TIMESTAMP_DB_PATTERN.exec(ts);
+  if (!m) {
+    const ms = new Date(ts).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  }
+
+  const year = Number(m[1]);
+  const month = Number(m[2]) - 1;
+  const day = Number(m[3]);
+  const hour = Number(m[4]);
+  const minute = Number(m[5]);
+  const second = Number(m[6]);
+  return new Date(year, month, day, hour, minute, second).getTime();
+}
+
+function formatRangeTimestamp(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
+}
 
 // Process a raw Firebase record into a normalized entry
 function parseRecord(key, value) {
@@ -14,23 +46,80 @@ function parseRecord(key, value) {
     id: key,
     ...value,
     Timestamp: value.Timestamp || '',
-    ts: value.Timestamp ? new Date(value.Timestamp).getTime() : 0,
+    ts: parseTimestampToMs(value.Timestamp),
   };
 }
 
-// Apply sensor-specific transforms in place
-function transformEntry(entry, sensorId, keys) {
-  if (sensorId === 'temperature') {
-    keys.forEach(k => {
-      const f = Number(entry[k]);
-      if (!isNaN(f)) entry[k] = parseFloat(((f - 32) * 5 / 9).toFixed(2));
-    });
+function transformEntry(entry, sensor) {
+  const normalized = { ...entry };
+
+  if (sensor.id === 'temperature') {
+    const celsius = Number(normalized.Celsius);
+    const fahrenheit = Number(normalized.Fahrenheit);
+    const nextValue = Number.isFinite(celsius)
+      ? celsius
+      : Number.isFinite(fahrenheit)
+        ? (fahrenheit - 32) * 5 / 9
+        : Number.NaN;
+
+    if (!Number.isFinite(nextValue) || nextValue < -5 || nextValue > 45) return null;
+    normalized.Celsius = Number.parseFloat(nextValue.toFixed(2));
+    return normalized;
   }
-  if (keys.length > 1) {
-    const mag = Math.sqrt(keys.reduce((sum, k) => sum + Math.pow(Number(entry[k]) || 0, 2), 0));
-    entry._magnitude = parseFloat(mag.toFixed(3));
+
+  if (sensor.id === 'axis') {
+    const accel = sensor.accelKeys.map(key => Number(normalized[key]));
+    const gravity = sensor.gravityKeys.map(key => Number(normalized[key]));
+    if ([...accel, ...gravity].some(value => !Number.isFinite(value))) return null;
+
+    const motion = Math.sqrt(
+      accel.reduce((sum, value, index) => sum + Math.pow(value - gravity[index], 2), 0)
+    );
+
+    normalized._magnitude = Number.parseFloat(motion.toFixed(3));
+    return normalized;
   }
-  return entry;
+
+  const value = Number(normalized[sensor.valueKey]);
+  if (!Number.isFinite(value)) return null;
+  if (sensor.id === 'light' && value < 0) return null;
+  if (sensor.id === 'ph' && (value < 0 || value > 14)) return null;
+  if ((sensor.id === 'tds' || sensor.id === 'turbidity') && value < 0) return null;
+
+  normalized[sensor.valueKey] = Number.parseFloat(value.toFixed(3));
+  return normalized;
+}
+
+function removeOutliers(records, sensor) {
+  if (!records.length || !sensor.valueKey) return records;
+
+  const values = records
+    .map(record => Number(record[sensor.valueKey]))
+    .filter(Number.isFinite);
+
+  if (values.length < 24) return records;
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const percentile = (p) => {
+    const index = (sorted.length - 1) * p;
+    const lower = Math.floor(index);
+    const upper = Math.ceil(index);
+    if (lower === upper) return sorted[lower];
+    const weight = index - lower;
+    return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+  };
+
+  const q1 = percentile(0.25);
+  const q3 = percentile(0.75);
+  const iqr = q3 - q1;
+  if (!Number.isFinite(iqr) || iqr <= 0) return records;
+
+  const lower = q1 - 3 * iqr;
+  const upper = q3 + 3 * iqr;
+  return records.filter(record => {
+    const value = Number(record[sensor.valueKey]);
+    return Number.isFinite(value) && value >= lower && value <= upper;
+  });
 }
 
 export function useFirebaseData(dateRange = null) {
@@ -73,28 +162,27 @@ export function useFirebaseData(dateRange = null) {
     };
 
     // Build the Firebase query for initial fetch
-    // Historical mode: orderByChild("Timestamp") + startAt + endAt → full date range, no limit
-    // Live mode: orderByKey + limitToLast(LIVE_POINTS) → most recent N records
+    // Historical mode: orderByChild("Timestamp") + startAt + endAt → full date range
+    // Live mode: orderByKey → full available history
     const isHistorical = dateRange && dateRange.start && dateRange.end;
 
     SENSORS.forEach(sensor => {
       let fetchQuery;
       if (isHistorical) {
         // Fetch all records within the selected date range
-        const startISO = dateRange.start.toISOString();
-        const endISO   = dateRange.end.toISOString();
+        const startTS = formatRangeTimestamp(dateRange.start);
+        const endTS   = formatRangeTimestamp(dateRange.end);
         fetchQuery = query(
           ref(database, sensor.path),
           orderByChild('Timestamp'),
-          startAt(startISO),
-          endAt(endISO)
+          startAt(startTS),
+          endAt(endTS)
         );
       } else {
-        // Live mode — recent records
+        // Live mode — load all available records
         fetchQuery = query(
           ref(database, sensor.path),
-          orderByKey(),
-          limitToLast(LIVE_POINTS)
+          orderByKey()
         );
       }
 
@@ -111,9 +199,12 @@ export function useFirebaseData(dateRange = null) {
         }
 
         if (records.length > 0) {
-          const keys = detectValueKeys(records[0]);
+          const keys = detectValueKeys(records[0], sensor.id);
           valueKeysRef.current[sensor.id] = keys;
-          records = records.map(e => transformEntry(e, sensor.id, keys));
+          records = records
+            .map(e => transformEntry(e, sensor))
+            .filter(Boolean);
+          records = removeOutliers(records, sensor);
         }
 
         liveBufferRef.current[sensor.id] = records;
@@ -133,23 +224,17 @@ export function useFirebaseData(dateRange = null) {
 
               const rtQuery = lastKey
                 ? query(ref(database, s.path), orderByKey(), startAfter(lastKey))
-                : query(ref(database, s.path), orderByKey(), limitToLast(1));
+                : query(ref(database, s.path), orderByKey());
 
               const unsub = onChildAdded(rtQuery, childSnapshot => {
                 if (cancelled) return;
-                const keys = valueKeysRef.current[s.id] || [];
-                const entry = transformEntry(
-                  parseRecord(childSnapshot.key, childSnapshot.val()),
-                  s.id, keys
-                );
+                const entry = transformEntry(parseRecord(childSnapshot.key, childSnapshot.val()), s);
+                if (!entry) return;
 
                 const buf = liveBufferRef.current[s.id] || [];
                 if (buf.some(r => r.id === entry.id)) return;
 
-                const updated = [...buf, entry];
-                liveBufferRef.current[s.id] = updated.length > LIVE_POINTS
-                  ? updated.slice(-LIVE_POINTS)
-                  : updated;
+                liveBufferRef.current[s.id] = [...buf, entry];
 
                 scheduleFlush();
               });
@@ -187,7 +272,7 @@ export function useFirebaseData(dateRange = null) {
       const keys = valueKeys[sensor.id];
       if (!data?.length || !keys?.length) return;
 
-      const vKey = keys.length > 1 ? '_magnitude' : keys[0];
+      const vKey = getValueKey(sensor.id, valueKeys);
 
       data.forEach((d) => {
         const tsKey = d.Timestamp;
@@ -195,7 +280,7 @@ export function useFirebaseData(dateRange = null) {
           allTimestamps.set(tsKey, { Timestamp: d.Timestamp, ts: d.ts });
         }
         const row = allTimestamps.get(tsKey);
-        row[sensor.id] = parseFloat(d[vKey]) || 0;
+        row[sensor.id] = Number.parseFloat(d[vKey]) || 0;
       });
     });
 

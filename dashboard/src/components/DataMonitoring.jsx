@@ -135,7 +135,7 @@ export default function DataMonitoring({ sensorData, valueKeys, dateRange, onDat
           <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>
             {dateRange
               ? `Showing records from ${toInputDate(dateRange.start)} to ${toInputDate(dateRange.end)}`
-              : 'Showing most recent records — use the date filter to view historical data'}
+              : 'Showing all available live records — use the date filter to narrow down history'}
           </p>
         </div>
         {/* Date range quick-apply inside monitoring page */}

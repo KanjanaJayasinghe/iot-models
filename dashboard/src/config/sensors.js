@@ -5,6 +5,7 @@ export const SENSORS = [
   {
     id: 'turbidity',
     path: 'test-data/Turbidity',
+    valueKey: 'NTU',
     label: 'Turbidity',
     unit: 'NTU',
     color: '#8b5cf6',
@@ -14,6 +15,7 @@ export const SENSORS = [
   {
     id: 'ph',
     path: 'test-data/pH',
+    valueKey: 'pH',
     label: 'pH Level',
     unit: 'pH',
     color: '#14b8a6',
@@ -23,6 +25,7 @@ export const SENSORS = [
   {
     id: 'temperature',
     path: 'test-data/Temperature',
+    valueKey: 'Celsius',
     label: 'Temperature',
     unit: '°C',
     color: '#10b981',
@@ -32,6 +35,7 @@ export const SENSORS = [
   {
     id: 'tds',
     path: 'test-data/TDS',
+    valueKey: 'PPM',
     label: 'TDS',
     unit: 'ppm',
     color: '#38bdf8',
@@ -41,6 +45,7 @@ export const SENSORS = [
   {
     id: 'light',
     path: 'test-data/Light',
+    valueKey: 'Lux',
     label: 'Light',
     unit: 'lux',
     color: '#22d3ee',
@@ -50,6 +55,9 @@ export const SENSORS = [
   {
     id: 'axis',
     path: 'test-data/Axis',
+    valueKey: '_magnitude',
+    accelKeys: ['AX', 'AY', 'AZ'],
+    gravityKeys: ['GX', 'GY', 'GZ'],
     label: 'Motion',
     unit: '',
     color: '#60a5fa',
@@ -64,12 +72,16 @@ export const SENSORS = [
  */
 const META_KEYS = new Set(['id', 'Timestamp', 'ts', 'SensorID', 'sensorId', 'sensor_id']);
 
-export function detectValueKeys(record) {
+export function detectValueKeys(record, sensorId) {
   if (!record) return [];
+
+  const sensor = SENSORS.find(item => item.id === sensorId);
+  if (sensor?.valueKey) return [sensor.valueKey];
+
   return Object.keys(record).filter(k => {
     if (META_KEYS.has(k)) return false;
     const v = record[k];
-    return typeof v === 'number' || (typeof v === 'string' && v !== '' && !isNaN(Number(v)));
+    return typeof v === 'number' || (typeof v === 'string' && v !== '' && !Number.isNaN(Number(v)));
   });
 }
 
@@ -78,6 +90,9 @@ export function detectValueKeys(record) {
  * For multi-value sensors (e.g. Axis with X,Y,Z), returns '_magnitude'.
  */
 export function getValueKey(sensorId, valueKeys) {
+  const sensor = SENSORS.find(item => item.id === sensorId);
+  if (sensor?.valueKey) return sensor.valueKey;
+
   const keys = valueKeys[sensorId];
   if (!keys || keys.length === 0) return sensorId;
   if (keys.length > 1) return '_magnitude';

@@ -295,6 +295,19 @@ def _select_best_k(x_scaled: np.ndarray, n_values: int) -> tuple:
     return best_k, best_sil
 
 
+def _build_cluster_label_names(sorted_idx: np.ndarray) -> dict:
+    """Assign readable, unique labels ordered by centroid value."""
+    label_sets = {
+        2: ["Low", "High"],
+        3: ["Low", "Medium", "High"],
+        4: ["Low", "Moderate", "Elevated", "High"],
+        5: ["Very Low", "Low", "Medium", "High", "Very High"],
+    }
+
+    labels = label_sets.get(len(sorted_idx), [f"Level {index + 1}" for index in range(len(sorted_idx))])
+    return {cluster_index: labels[label_index] for label_index, cluster_index in enumerate(sorted_idx)}
+
+
 def train_per_sensor_clustering(all_data: dict, value_cols: dict) -> dict:
     """
     Train K-Means clustering on each individual sensor for behavior
@@ -331,10 +344,7 @@ def train_per_sensor_clustering(all_data: dict, value_cols: dict) -> dict:
         # Sort clusters by centroid value
         centroid_means = scaler.inverse_transform(km.cluster_centers_).flatten()
         sorted_idx = np.argsort(centroid_means)
-        label_names = {sorted_idx[0]: "Low"}
-        label_names[sorted_idx[-1]] = "High"
-        for idx in sorted_idx[1:-1]:
-            label_names[idx] = "Medium"
+        label_names = _build_cluster_label_names(sorted_idx)
 
         unique, counts = np.unique(labels, return_counts=True)
         for cl, cnt in zip(unique, counts):
