@@ -1,10 +1,17 @@
 import { useState, useMemo } from 'react';
 import { SENSORS, getValueKey } from '../config/sensors';
-import { Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, Filter, Database } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, Filter, Database, Calendar } from 'lucide-react';
 
 const PAGE_SIZES = [25, 50, 100, 200];
 
-export default function DataMonitoring({ sensorData, valueKeys }) {
+function toInputDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export default function DataMonitoring({ sensorData, valueKeys, dateRange, onDateRangeChange }) {
   const [activeSensor, setActiveSensor] = useState(SENSORS[0]?.id || '');
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState('Timestamp');
@@ -13,6 +20,10 @@ export default function DataMonitoring({ sensorData, valueKeys }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [minVal, setMinVal] = useState('');
   const [maxVal, setMaxVal] = useState('');
+
+  // Local date filter inputs (controlled within this component)
+  const [localStart, setLocalStart] = useState(dateRange ? toInputDate(dateRange.start) : '');
+  const [localEnd, setLocalEnd]     = useState(dateRange ? toInputDate(dateRange.end)   : '');
 
   const sensor = SENSORS.find(s => s.id === activeSensor);
   const rawData = sensorData[activeSensor] || [];
@@ -116,13 +127,54 @@ export default function DataMonitoring({ sensorData, valueKeys }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Page Header */}
-      <div style={{ marginBottom: 4 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em' }}>
-          Realtime Data Monitoring
-        </h2>
-        <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>
-          View full historical sensor data with sorting, filtering, and export.
-        </p>
+      <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em' }}>
+            Data Monitoring
+          </h2>
+          <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>
+            {dateRange
+              ? `Showing records from ${toInputDate(dateRange.start)} to ${toInputDate(dateRange.end)}`
+              : 'Showing most recent records — use the date filter to view historical data'}
+          </p>
+        </div>
+        {/* Date range quick-apply inside monitoring page */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Calendar size={14} style={{ color: '#64748b' }} />
+          <input
+            type="date"
+            value={localStart}
+            onChange={e => setLocalStart(e.target.value)}
+            style={{ padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 12, outline: 'none' }}
+          />
+          <span style={{ color: '#94a3b8', fontSize: 12 }}>to</span>
+          <input
+            type="date"
+            value={localEnd}
+            onChange={e => setLocalEnd(e.target.value)}
+            style={{ padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 12, outline: 'none' }}
+          />
+          <button
+            onClick={() => {
+              if (!localStart || !localEnd) return;
+              const start = new Date(localStart); start.setHours(0,0,0,0);
+              const end   = new Date(localEnd);   end.setHours(23,59,59,999);
+              if (onDateRangeChange) onDateRangeChange({ start, end });
+            }}
+            disabled={!localStart || !localEnd}
+            style={{ padding: '6px 14px', borderRadius: 8, background: (!localStart || !localEnd) ? '#e2e8f0' : 'linear-gradient(135deg,#2563eb,#0891b2)', color: (!localStart || !localEnd) ? '#94a3b8' : 'white', fontWeight: 700, fontSize: 12, border: 'none', cursor: (!localStart || !localEnd) ? 'default' : 'pointer' }}
+          >
+            Load
+          </button>
+          {dateRange && (
+            <button
+              onClick={() => { setLocalStart(''); setLocalEnd(''); if (onDateRangeChange) onDateRangeChange(null); }}
+              style={{ padding: '6px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'white', color: '#64748b', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Sensor Tabs */}

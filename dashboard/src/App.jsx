@@ -12,11 +12,13 @@ import AnomalyChart from './components/AnomalyChart';
 import ClusterChart from './components/ClusterChart';
 import ForecastChart from './components/ForecastChart';
 import DataMonitoring from './components/DataMonitoring';
+import DateRangeFilter from './components/DateRangeFilter';
 import { computeStats } from './utils/analysis';
 import { loadThresholdResults, loadTemporalResults } from './utils/mlResults';
 
 export default function App() {
-  const { sensorData, valueKeys, mergedData, loading, error, lastUpdated } = useFirebaseData();
+  const [dateRange, setDateRange] = useState(null); // null = live mode
+  const { sensorData, valueKeys, mergedData, loading, error, lastUpdated, isHistorical } = useFirebaseData(dateRange);
   const [page, setPage] = useState('dashboard');
 
   if (loading) {
@@ -65,10 +67,19 @@ export default function App() {
           <p>Real-time sensor data &amp; ML analysis dashboard</p>
         </div>
         <div className="header-right">
-          <div className="online-badge">
-            <span className="online-dot" />
-            Live
-          </div>
+          <DateRangeFilter dateRange={dateRange} onChange={setDateRange} />
+          {!isHistorical && (
+            <div className="online-badge">
+              <span className="online-dot" />
+              Live
+            </div>
+          )}
+          {isHistorical && (
+            <div className="online-badge" style={{ background: '#eff6ff', color: '#2563eb', border: '1.5px solid #bfdbfe' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2563eb', display: 'inline-block' }} />
+              Historical
+            </div>
+          )}
           <div className="header-time-block">
             <span className="date-label">{now.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</span>
             <span className="time-value">{now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -79,7 +90,7 @@ export default function App() {
 
       <main style={{ padding: '18px 20px', overflow: 'auto', minHeight: 0 }}>
         {page === 'dashboard' && (
-          <DashboardView sensorData={sensorData} valueKeys={valueKeys} mergedData={mergedData} />
+          <DashboardView sensorData={sensorData} valueKeys={valueKeys} mergedData={mergedData} dateRange={dateRange} onDateRangeChange={setDateRange} />
         )}
         {page === 'forecasting' && (
           <ForecastingView sensorData={sensorData} valueKeys={valueKeys} />
@@ -97,7 +108,7 @@ export default function App() {
           <AlertsView sensorData={sensorData} valueKeys={valueKeys} />
         )}
         {page === 'monitoring' && (
-          <DataMonitoring sensorData={sensorData} valueKeys={valueKeys} />
+          <DataMonitoring sensorData={sensorData} valueKeys={valueKeys} dateRange={dateRange} onDateRangeChange={setDateRange} />
         )}
         {page === 'settings' && <SettingsView />}
       </main>
@@ -113,7 +124,7 @@ export default function App() {
 }
 
 /* ── Dashboard Page ── */
-function DashboardView({ sensorData, valueKeys, mergedData }) {
+function DashboardView({ sensorData, valueKeys, mergedData, dateRange, onDateRangeChange }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
@@ -138,7 +149,7 @@ function DashboardView({ sensorData, valueKeys, mergedData }) {
       </div>
 
       {/* Trend Analysis Chart */}
-      <TrendChart sensorData={sensorData} valueKeys={valueKeys} mergedData={mergedData} />
+      <TrendChart sensorData={sensorData} valueKeys={valueKeys} mergedData={mergedData} dateRange={dateRange} onDateRangeChange={onDateRangeChange} />
     </div>
   );
 }

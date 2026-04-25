@@ -25,8 +25,17 @@ function TrendChart({ sensorData, valueKeys, mergedData }) {
   const chartData = useMemo(() => {
     if (!mergedData?.length) return [];
     let src = mergedData;
-    if (filter === 'last50') src = src.slice(-50);
-    else if (filter === 'last100') src = src.slice(-100);
+
+    // Date-relative filters — work correctly regardless of how many records are loaded
+    const now = Date.now();
+    if (filter === '24h') {
+      src = src.filter(d => d.ts && (now - d.ts) <= 24 * 60 * 60 * 1000);
+    } else if (filter === '7d') {
+      src = src.filter(d => d.ts && (now - d.ts) <= 7 * 24 * 60 * 60 * 1000);
+    } else if (filter === '30d') {
+      src = src.filter(d => d.ts && (now - d.ts) <= 30 * 24 * 60 * 60 * 1000);
+    }
+    // filter === 'all' → use everything loaded (may be 500 live records or full date-range batch)
 
     // Down-sample to max 60 points for chart performance
     if (src.length > 60) {
@@ -89,9 +98,10 @@ function TrendChart({ sensorData, valueKeys, mergedData }) {
             fontFamily: 'var(--font-main)',
           }}
         >
-          <option value="all">All Records</option>
-          <option value="last100">Last 100</option>
-          <option value="last50">Last 50</option>
+          <option value="all">All Loaded Data</option>
+          <option value="24h">Last 24 Hours</option>
+          <option value="7d">Last 7 Days</option>
+          <option value="30d">Last 30 Days</option>
         </select>
       </div>
 
