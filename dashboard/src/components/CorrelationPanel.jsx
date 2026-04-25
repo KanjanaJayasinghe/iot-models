@@ -37,11 +37,11 @@ export default function CorrelationPanel({ sensorData, mergedData }) {
   };
 
   return (
-    <div className="card" style={{ padding: '20px 18px' }}>
+<div className="card" style={{ padding: '22px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>ML Correlation Matrix</h3>
-          <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Pearson correlation (ML computed)</p>
+          <h3 className="section-title" style={{ marginBottom: 2, fontSize: 14 }}>Correlation Matrix</h3>
+          <p style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 500 }}>Pearson correlation (ML computed)</p>
         </div>
       </div>
 

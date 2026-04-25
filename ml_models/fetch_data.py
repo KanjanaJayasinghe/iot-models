@@ -70,9 +70,10 @@ def fetch_sensor_data(sensor_id: str) -> pd.DataFrame:
         for col in value_cols:
             df[col] = (df[col] - 32) * 5 / 9
 
-    # For multi-value sensors (Axis: X, Y, Z), compute magnitude
+    # For multi-axis sensors ONLY (Axis: X, Y, Z), compute magnitude
+    # Temperature, TDS etc. may have extra columns but should NOT use magnitude
     numeric_cols = [c for c in value_cols if c not in META_KEYS and c != "_key"]
-    if len(numeric_cols) > 1:
+    if len(numeric_cols) > 1 and sensor_id == "axis":
         df["_magnitude"] = np.sqrt(sum(df[c].fillna(0) ** 2 for c in numeric_cols))
         df["_magnitude"] = df["_magnitude"].round(3)
 
@@ -94,12 +95,13 @@ def get_primary_value_column(df: pd.DataFrame, sensor_id: str) -> str:
     """Get the primary numeric value column for a sensor DataFrame."""
     exclude = META_KEYS | {"_key", "Timestamp"}
 
-    if "_magnitude" in df.columns:
+    # Only prefer _magnitude for axis (motion) sensor with X/Y/Z components
+    if "_magnitude" in df.columns and sensor_id == "axis":
         return "_magnitude"
 
     numeric_cols = [
         c for c in df.select_dtypes(include=[np.number]).columns
-        if c not in exclude
+        if c not in exclude and c != "_magnitude"
     ]
 
     if numeric_cols:

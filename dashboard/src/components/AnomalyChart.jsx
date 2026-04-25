@@ -32,12 +32,11 @@ export default function AnomalyChart({ data, dataKey, title, color = '#3b82f6', 
     const mean = values.reduce((a, b) => a + b, 0) / values.length;
     const std = Math.sqrt(values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length) || 1;
 
-    // Use ML contamination ratio to determine threshold
     const sortedAbs = values.map(v => Math.abs((v - mean) / std)).sort((a, b) => b - a);
     const mlThresholdIdx = Math.max(0, Math.floor(contamination * values.length));
     const mlThreshold = sortedAbs[mlThresholdIdx] || 2.5;
 
-    const result = data.map((d, i) => {
+    const allAnalyzed = data.map((d, i) => {
       const val = Number(d[dataKey]) || 0;
       const zScore = parseFloat(((val - mean) / std).toFixed(3));
       const anomalyScore = scores[i] !== undefined ? scores[i] : null;
@@ -45,8 +44,19 @@ export default function AnomalyChart({ data, dataKey, title, color = '#3b82f6', 
       return { ...d, isAnomaly, zScore, anomalyScore };
     });
 
-    const ac = result.filter(d => d.isAnomaly).length;
-    const hs = Math.max(0, Math.round((1 - ac / result.length) * 100));
+    // Downsample chart data to 100 points for performance (keep all anomalies)
+    let result = allAnalyzed;
+    if (allAnalyzed.length > 100) {
+      const step = Math.ceil(allAnalyzed.length / 100);
+      const sampled = allAnalyzed.filter((_, i) => i % step === 0);
+      const anomalies = allAnalyzed.filter(d => d.isAnomaly);
+      const combined = [...sampled, ...anomalies];
+      combined.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      result = combined.filter((d, i, arr) => i === 0 || d.Timestamp !== arr[i-1].Timestamp);
+    }
+
+    const ac = allAnalyzed.filter(d => d.isAnomaly).length;
+    const hs = Math.max(0, Math.round((1 - ac / allAnalyzed.length) * 100));
 
     // Z-score distribution buckets
     const buckets = [
@@ -122,7 +132,7 @@ export default function AnomalyChart({ data, dataKey, title, color = '#3b82f6', 
           <div style={{ position: 'relative', width: 80, height: 80 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={36} paddingAngle={3} dataKey="value" stroke="none">
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={36} paddingAngle={3} dataKey="value" stroke="none" isAnimationActive={false}>
                   {pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                 </Pie>
               </PieChart>
@@ -155,7 +165,7 @@ export default function AnomalyChart({ data, dataKey, title, color = '#3b82f6', 
           <ResponsiveContainer width="100%" height={80}>
             <BarChart data={distribution} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
               <XAxis dataKey="range" tick={{ fontSize: 8, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <Bar dataKey="count" radius={[3, 3, 0, 0]} barSize={14}>
+              <Bar dataKey="count" radius={[3, 3, 0, 0]} barSize={14} isAnimationActive={false}>
                 {distribution.map((entry, i) => <Cell key={i} fill={entry.fill} fillOpacity={0.7} />)}
               </Bar>
             </BarChart>
@@ -199,12 +209,12 @@ export default function AnomalyChart({ data, dataKey, title, color = '#3b82f6', 
                 </div>
               );
             }} />
-            <Bar yAxisId="value" dataKey={dataKey} barSize={3} radius={[2, 2, 0, 0]}>
+            <Bar yAxisId="value" dataKey={dataKey} barSize={3} radius={[2, 2, 0, 0]} isAnimationActive={false}>
               {analyzed.map((entry, i) => (
                 <Cell key={i} fill={entry.isAnomaly ? '#ef4444' : color} fillOpacity={entry.isAnomaly ? 0.9 : 0.4} />
               ))}
             </Bar>
-            <Line yAxisId="zscore" type="monotone" dataKey="zScore" stroke="#8b5cf6" strokeWidth={1.5} dot={false} strokeDasharray="4 4" strokeOpacity={0.5} />
+            <Line yAxisId="zscore" type="monotone" dataKey="zScore" stroke="#8b5cf6" strokeWidth={1.5} dot={false} strokeDasharray="4 4" strokeOpacity={0.5} isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

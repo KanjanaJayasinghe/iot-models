@@ -39,6 +39,7 @@ import os
 import sys
 import json
 import time
+import shutil
 import numpy as np
 
 # ─── Add current directory to path ────────────────────────────────────────────
@@ -201,6 +202,33 @@ def main():
     with open(summary_path, "w") as f:
         json.dump(overall_summary, f, indent=2)
     print(f"\n  Overall summary → {summary_path}")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # PHASE 4: COPY RESULTS TO DASHBOARD
+    # ══════════════════════════════════════════════════════════════════════════
+    project_root = os.path.dirname(os.path.dirname(__file__))
+    dashboard_ml_dir = os.path.join(project_root, "dashboard", "public", "ml_results")
+    os.makedirs(dashboard_ml_dir, exist_ok=True)
+
+    copy_map = {
+        os.path.join(model_dir, "temporal", "temporal_summary.json"): "temporal.json",
+        os.path.join(model_dir, "anomaly", "anomaly_summary.json"): "anomaly.json",
+        os.path.join(model_dir, "threshold", "threshold_summary.json"): "threshold.json",
+        os.path.join(model_dir, "correlation", "correlation_summary.json"): "correlation.json",
+        os.path.join(model_dir, "clustering", "clustering_summary.json"): "clustering.json",
+        summary_path: "training_summary.json",
+    }
+
+    print("\n  Copying ML results to dashboard/public/ml_results/...")
+    for src, dest_name in copy_map.items():
+        dest = os.path.join(dashboard_ml_dir, dest_name)
+        if os.path.exists(src):
+            shutil.copy2(src, dest)
+            print(f"    ✓  {dest_name}")
+        else:
+            print(f"    ✗  {dest_name} (source not found: {src})")
+
+    print(f"\n  Dashboard ML results updated: {dashboard_ml_dir}")
 
     print("\n  Done! All ML models trained and saved successfully.")
     print("  These models can be loaded with joblib.load() for inference.\n")

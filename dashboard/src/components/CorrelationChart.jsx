@@ -75,13 +75,19 @@ export default function CorrelationChart({ data }) {
 
   const scatterData = useMemo(() => {
     if (!data?.length || !xId || !yId) return [];
-    return data
+    const raw = data
       .filter(d => d[xId] !== undefined && d[yId] !== undefined)
       .map(d => ({
         x: parseFloat(d[xId]) || 0,
         y: parseFloat(d[yId]) || 0,
         timestamp: d.Timestamp,
       }));
+    // Downsample to 80 points for chart performance
+    if (raw.length > 80) {
+      const step = Math.ceil(raw.length / 80);
+      return raw.filter((_, i) => i % step === 0);
+    }
+    return raw;
   }, [data, xId, yId]);
 
   const corrLevel = Math.abs(correlation);
@@ -184,7 +190,7 @@ export default function CorrelationChart({ data }) {
                   <XAxis type="number" domain={[0, 'auto']} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }} axisLine={false} tickLine={false} width={90} />
                   <Tooltip formatter={(v) => `${v}%`} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }} />
-                  <Bar dataKey="importance" name="Importance %" radius={[0, 6, 6, 0]} barSize={16}>
+                  <Bar dataKey="importance" name="Importance %" radius={[0, 6, 6, 0]} barSize={16} isAnimationActive={false}>
                     {featureImportance.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} fillOpacity={0.8} />
                     ))}

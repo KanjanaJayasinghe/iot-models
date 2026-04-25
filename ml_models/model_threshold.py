@@ -201,8 +201,10 @@ def train_threshold_classifiers(df: pd.DataFrame, value_col: str,
 
     # Cross-validation
     n_classes = len(set(y_encoded))
+    min_class_count = min((v for v in label_counts.values() if v > 0), default=5)
+    n_splits = max(2, min(5, min_class_count))
     if n_classes >= 2:
-        cv = StratifiedKFold(n_splits=min(5, min(label_counts.values(), default=5)),
+        cv = StratifiedKFold(n_splits=n_splits,
                              shuffle=True, random_state=42)
         try:
             dt_scores = cross_val_score(dt, X_scaled, y_encoded, cv=cv,

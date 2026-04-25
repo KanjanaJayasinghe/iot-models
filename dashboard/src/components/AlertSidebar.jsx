@@ -1,9 +1,9 @@
-import { useMemo, useEffect, useState } from 'react';
-import { CheckCircle, AlertTriangle, AlertOctagon, Info } from 'lucide-react';
+import { memo, useMemo, useEffect, useState } from 'react';
+import { CheckCircle, AlertTriangle, AlertOctagon } from 'lucide-react';
 import { loadThresholdResults } from '../utils/mlResults';
 import { SENSORS, getValueKey } from '../config/sensors';
 
-export default function AlertSidebar({ sensorData, valueKeys }) {
+function AlertSidebar({ sensorData, valueKeys }) {
   const [mlData, setMlData] = useState(null);
 
   useEffect(() => {
@@ -87,43 +87,48 @@ export default function AlertSidebar({ sensorData, valueKeys }) {
   }, [sensorData, valueKeys, mlData]);
 
   const iconMap = {
-    safe:    <CheckCircle   style={{ width: 22, height: 22, color: '#10b981' }} />,
-    warning: <AlertTriangle style={{ width: 22, height: 22, color: '#f59e0b' }} />,
-    danger:  <AlertOctagon  style={{ width: 22, height: 22, color: '#ef4444' }} />,
+    safe:    <CheckCircle   style={{ width: 16, height: 16, color: '#10b981' }} />,
+    warning: <AlertTriangle style={{ width: 16, height: 16, color: '#f59e0b' }} />,
+    danger:  <AlertOctagon  style={{ width: 16, height: 16, color: '#ef4444' }} />,
   };
 
   const bgMap     = { safe: 'alert-safe', warning: 'alert-warning', danger: 'alert-danger' };
   const iconBgMap = {
-    safe:    { background: '#d1fae5', borderRadius: 12, padding: 8, display: 'flex' },
-    warning: { background: '#fef3c7', borderRadius: 12, padding: 8, display: 'flex' },
-    danger:  { background: '#ffe4e6', borderRadius: 12, padding: 8, display: 'flex' },
+    safe:    { background: '#dcfce7', borderRadius: 7, padding: 5, display: 'flex', flexShrink: 0 },
+    warning: { background: '#fef9c3', borderRadius: 7, padding: 5, display: 'flex', flexShrink: 0 },
+    danger:  { background: '#ffe4e6', borderRadius: 7, padding: 5, display: 'flex', flexShrink: 0 },
   };
   const titleColorMap = { safe: '#059669', warning: '#d97706', danger: '#dc2626' };
 
+  const activeType = alerts.some(a => a.type === 'danger') ? 'danger' : alerts.some(a => a.type === 'warning') ? 'warning' : 'safe';
+  const badgeBg    = { danger: '#ffe4e6', warning: '#fef9c3', safe: '#dcfce7' }[activeType];
+  const badgeColor = { danger: '#dc2626', warning: '#a16207', safe: '#15803d' }[activeType];
+  const activeCount = alerts.filter(a => a.type !== 'safe').length;
+
   return (
-    <div className="card" style={{ padding: '20px 18px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>ML Alert Panel</h3>
-        <span style={{ fontSize: 10, color: '#94a3b8' }}>GMM Threshold</span>
+    <div className="card" style={{ padding: '16px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <h3 className="section-title" style={{ marginBottom: 0, fontSize: 14 }}>Sensor Alerts</h3>
+        <span style={{ padding: '3px 10px', borderRadius: 50, fontSize: 11, fontWeight: 800, background: badgeBg, color: badgeColor }}>
+          {activeCount === 0 ? 'All Clear' : `${activeCount} Active`}
+        </span>
       </div>
-      <div style={{ maxHeight: 420, overflow: 'auto' }}>
+      <div style={{ maxHeight: 420, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {alerts.map((alert, i) => (
-          <div key={i} className={`alert-item ${bgMap[alert.type]} fade-in`} style={{ animationDelay: `${i * 0.08}s` }}>
+          <div key={`${alert.type}-${i}`} className={`alert-item ${bgMap[alert.type]} fade-in`} style={{ animationDelay: `${i * 0.07}s` }}>
             <div style={iconBgMap[alert.type]}>
               {iconMap[alert.type]}
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: titleColorMap[alert.type] }}>{alert.title}</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                {alert.message}
-                <br />
-                <span style={{ color: titleColorMap[alert.type], fontWeight: 500 }}>{alert.detail}</span>
-              </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: titleColorMap[alert.type], letterSpacing: '-0.1px' }}>{alert.title}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5 }}>{alert.message}</div>
+              <div style={{ fontSize: 11, color: titleColorMap[alert.type], fontWeight: 600, marginTop: 3, opacity: 0.8 }}>{alert.detail}</div>
             </div>
-            <Info style={{ width: 16, height: 16, color: '#cbd5e1' }} />
           </div>
         ))}
       </div>
     </div>
   );
 }
+
+export default memo(AlertSidebar);

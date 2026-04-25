@@ -114,7 +114,7 @@ export default function ForecastChart({ data, dataKey, title, color = '#3b82f6',
                 <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: '#64748b' }} axisLine={false} tickLine={false} width={130} />
                 <Tooltip formatter={(v) => `${v}%`} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }} />
-                <Bar dataKey="r2" name="R� %" radius={[0, 4, 4, 0]} barSize={10}>
+                <Bar dataKey="r2" name="R² %" radius={[0, 4, 4, 0]} barSize={10} isAnimationActive={false}>
                   {modelCompare.map((entry, i) => (
                     <Cell key={i} fill={entry.r2 > 90 ? '#10b981' : entry.r2 > 50 ? '#38bdf8' : '#f59e0b'} />
                   ))}
@@ -152,8 +152,8 @@ export default function ForecastChart({ data, dataKey, title, color = '#3b82f6',
                 </div>
               );
             }} />
-            <Area type="monotone" dataKey="actual" stroke={color} strokeWidth={2} fill={`url(#fg-${sensorId})`} dot={false} />
-            <Area type="monotone" dataKey="forecast" stroke="#14b8a6" strokeWidth={2} strokeDasharray="6 4" fill={`url(#ff-${sensorId})`} dot={false} />
+            <Area type="monotone" dataKey="actual" stroke={color} strokeWidth={2} fill={`url(#fg-${sensorId})`} dot={false} isAnimationActive={false} />
+            <Area type="monotone" dataKey="forecast" stroke="#14b8a6" strokeWidth={2} strokeDasharray="6 4" fill={`url(#ff-${sensorId})`} dot={false} isAnimationActive={false} />
             {splitIndex > 0 && chartData[splitIndex - 1] && (
               <ReferenceDot x={chartData[splitIndex - 1].Timestamp} y={chartData[splitIndex - 1].actual} r={5} fill="white" stroke="#14b8a6" strokeWidth={2.5} />
             )}

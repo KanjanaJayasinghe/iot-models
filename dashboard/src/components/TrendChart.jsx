@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { memo, useMemo, useState } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer
@@ -7,10 +7,10 @@ import { formatTimestamp } from '../utils/formatters';
 import { movingAverage, linearRegression, exponentialSmoothing } from '../utils/analysis';
 import { SENSORS, getValueKey } from '../config/sensors';
 
-export default function TrendChart({ sensorData, valueKeys, mergedData }) {
+function TrendChart({ sensorData, valueKeys, mergedData }) {
   const [filter, setFilter] = useState('all');
   const [activeSensors, setActiveSensors] = useState(() =>
-    new Set(SENSORS.map(s => s.id))
+    new Set([SENSORS[0].id])
   );
 
   const toggleSensor = (id) => {
@@ -28,9 +28,15 @@ export default function TrendChart({ sensorData, valueKeys, mergedData }) {
     if (filter === 'last50') src = src.slice(-50);
     else if (filter === 'last100') src = src.slice(-100);
 
+    // Down-sample to max 60 points for chart performance
+    if (src.length > 60) {
+      const step = Math.ceil(src.length / 60);
+      src = src.filter((_, i) => i % step === 0);
+    }
+
     let result = src.map((d, i) => ({ ...d, index: i }));
 
-    // For each active sensor, add ML layers
+    // Only compute ML overlays for active sensors
     SENSORS.forEach(sensor => {
       if (!activeSensors.has(sensor.id)) return;
       const key = sensor.id;
@@ -65,22 +71,22 @@ export default function TrendChart({ sensorData, valueKeys, mergedData }) {
   const active = SENSORS.filter(s => activeSensors.has(s.id));
 
   return (
-    <div className="card fade-in" style={{ padding: '24px' }}>
+    <div className="chart-container fade-in">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 }}>
         <div>
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Trend Analysis</h3>
-          <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>
-            Time-series data with ML regression & exponential smoothing.
-          </p>
+          <h3 className="chart-title">Trend Analysis</h3>
+          <p className="chart-subtitle">Real-time sensor readings with regression &amp; smoothing</p>
         </div>
         <select
           value={filter}
           onChange={e => setFilter(e.target.value)}
           style={{
-            padding: '8px 16px', borderRadius: 10, border: '1px solid #e2e8f0',
-            fontSize: 13, fontWeight: 500, color: '#475569', background: '#f8fafc',
-            cursor: 'pointer', outline: 'none',
+            padding: '8px 14px', borderRadius: 10,
+            border: '1.5px solid var(--border-strong)',
+            fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)',
+            background: 'var(--bg-surface)', cursor: 'pointer', outline: 'none',
+            fontFamily: 'var(--font-main)',
           }}
         >
           <option value="all">All Records</option>
@@ -96,15 +102,16 @@ export default function TrendChart({ sensorData, valueKeys, mergedData }) {
             key={s.id}
             onClick={() => toggleSensor(s.id)}
             style={{
-              padding: '5px 14px',
-              borderRadius: 20,
+              padding: '6px 16px',
+              borderRadius: 50,
               fontSize: 12,
-              fontWeight: 600,
-              border: `2px solid ${s.color}`,
+              fontWeight: 700,
+              border: `1.5px solid ${s.color}`,
               background: activeSensors.has(s.id) ? s.color : 'transparent',
               color: activeSensors.has(s.id) ? 'white' : s.color,
               cursor: 'pointer',
               transition: 'all 0.2s',
+              boxShadow: activeSensors.has(s.id) ? `0 4px 12px ${s.color}44` : 'none',
             }}
           >
             {s.label}
@@ -167,6 +174,7 @@ export default function TrendChart({ sensorData, valueKeys, mergedData }) {
                 fill={`url(#grad-${s.id})`}
                 dot={false}
                 activeDot={{ r: 4, fill: 'white', stroke: s.color, strokeWidth: 2 }}
+                isAnimationActive={false}
               />
             ))}
 
@@ -182,6 +190,7 @@ export default function TrendChart({ sensorData, valueKeys, mergedData }) {
                 strokeDasharray="6 4"
                 fill="none"
                 dot={false}
+                isAnimationActive={false}
               />
             ))}
 
@@ -197,6 +206,7 @@ export default function TrendChart({ sensorData, valueKeys, mergedData }) {
                 strokeDasharray="4 4"
                 fill="none"
                 dot={false}
+                isAnimationActive={false}
               />
             ))}
           </AreaChart>
@@ -212,6 +222,8 @@ export default function TrendChart({ sensorData, valueKeys, mergedData }) {
     </div>
   );
 }
+
+export default memo(TrendChart);
 
 function LegendDot({ color, label, filled }) {
   return (
